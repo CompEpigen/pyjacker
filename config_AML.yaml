@@ -1,0 +1,34 @@
+
+
+# TPM file: rows are genes (ensembl ID) and columns samples.
+RNA_TPM_file: "/home/e840r/Documents/Projects/AML/RNAseq/counts/salmon.merged.gene_tpm.tsv"
+# Can alternatively provide counts file and exonicgene lengths, which will be used to compute TPM
+#RNA_counts_file: "/home/e840r/Documents/Projects/AML/RNAseq/counts/salmon.merged.gene_counts.tsv"
+#exonic_gene_lengths: "/home/e840r/Documents/Data/GRCh37/RNAseq/exonic_gene_lengths.tsv" # required if counts are provided instead of TPM
+
+
+breakpoints: "/home/e840r/Documents/Projects/AML/WGS/breakpoints.tsv"
+
+CNAs: "/home/e840r/Documents/Projects/AML/WGS/CNAs.tsv"
+
+# pyjacker looks for SVs in the same TAD as a gene (+ a margin). 
+# If not TADs are provided, it will look for SVs which are up to max_dist_bp2tss from the TSS.
+TADs_file: "/home/e840r/Documents/Data/GRCh37/WGS/TAD/Dixon_IMR90_hg19_liftover.bed"
+#max_dist_bp2tss: 1500000 
+
+FusionTranscripts_file: "/home/e840r/Documents/Projects/AML/RNAseq/Fusions/fusions_merged_coding.tsv"
+
+
+#SNV_RNA_dir: "/home/e840r/Documents/Projects/AML/WGS/SNV_RNA"
+BAM_DNA_template: "/mnt/cluster/Projects/AML/WGS/BAM/{sample}.bam" # {sample} will be replaced by the sample name
+BAM_RNA_template: "/mnt/cluster/RNAseq/pipeline/star_salmon/C010-AML-{sample}.markdup.sorted.bam"
+# If true, samples with monoallelic expression for a gene will be excluded when estimating the normal distribution for the expression of a gene, even if there are no breakpoints close.
+exclude_monoallelic_from_reference: True 
+
+
+enhancers_bed: /home/e840r/Documents/Data/GRCh37/WGS/enhancers/enhancers_HSPC.bed
+
+
+
+# Outputs
+output_dir: "/home/e840r/Documents/Projects/AML/Enhancer_hijacking_noref"
