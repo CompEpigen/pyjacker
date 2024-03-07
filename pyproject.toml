@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["pyjacker"]
+
+[project]
+name = 'pyjacker'
+version = "0.0.1"
+description = 'Enhancer hijacking detection from WGS and RNAseq.'
+readme = 'README.md'
+authors = [
+  { name = 'Etienne Sollier', email='etienne.sollier@dkfz.de' },
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+requires-python = '>=3.7'
+dependencies = [
+  "numpy>=1.10.0",
+  "pandas>=1.3.0",
+  "vcfpy>=0.13.5",
+  "scipy>=1.7.3",
+  "statsmodels>=0.13.5",
+  "pyyaml>=6.0",
+  "matplotlib>=3.4.3",
+  "figeno>=0.0.2"
+]
+
+[project.scripts]
+pyjacker = "pyjacker.pyjacker:main"
+
+[project.urls]
+"Homepage" = "https://github.com/CompEpigen/pyjacker"
