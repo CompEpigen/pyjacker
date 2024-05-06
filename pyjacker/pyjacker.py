@@ -30,12 +30,13 @@ class pyjacker:
             else: self.n_threads = 6
 
             # Params
-            self.weights = {"OHE":4.0,"ASE":2.0,"expnormal":2.0,"amplification":0.2,"deletion":5}
+            self.weights = {"OHE":4.0,"ASE":2.0,"expnormal":2.0,"amplification":0.2,"deletion":5,"enhancers":1.0}
             if "weight_OHE" in data_yaml:  self.weights["OHE"] = float(data_yaml["weight_OHE"])
             if "weight_ASE" in data_yaml:  self.weights["ASE"] = float(data_yaml["weight_ASE"])
             if "weight_expnormal" in data_yaml:  self.weights["expnormal"] = float(data_yaml["weight_expnormal"])
             if "weight_amplification" in data_yaml:  self.weights["amplification"] = float(data_yaml["weight_amplification"])
             if "weight_deletion" in data_yaml:  self.weights["deletion"] = float(data_yaml["weight_deletion"])
+            if "weight_enhancers" in data_yaml:  self.weights["enhancers"] = float(data_yaml["weight_enhancers"])
 
             # gtf
             if "gtf" in data_yaml:
@@ -74,7 +75,9 @@ class pyjacker:
                 self.samples = list(self.df_TPM.columns)
                 tmp_list = list(self.genes)
                 for gene_id in tmp_list:
-                    if not gene_id in self.df_TPM.index: tmp = self.genes.pop(gene_id)
+                    if not gene_id in self.df_TPM.index: 
+                        tmp = self.genes.pop(gene_id)
+                        
             else:
                 sys.exit("Missing RNA_TPM_file from the config file.")
 
@@ -211,16 +214,12 @@ class pyjacker:
             else:
                 df_result["pval"] = [compute_empirical_pval(score,null_distribution) for score in df_result["score"]]
                 df_result["FDR"] = multipletests(df_result["pval"],alpha=0.05,method="fdr_bh")[1]
-            print("Empirical p-values")
-            for s in [0,1,2,3,4,5,6,6.5,7,7.5,8,8.5,9,9.5,10,10.5,11,11.5,12,12.5,13,14,15,16]:
-                print((s,compute_empirical_pval(s,null_distribution)))
-            #df_result = df_result.loc[df_result["pval"]<0.30,:]
         else:
             df_result = df_result.loc[df_result["score"]>-5,:]
 
-        df_result = df_result.loc[df_result["score"]>0,:] #0
+        df_result = df_result.loc[df_result["score"]>0,:]
         df_result = df_result.reset_index(drop=True) 
-        columns_output = ["FDR","score","gene_id","gene_name","chr","start","end","sample","distance_to_breakpoint","n_SNPs","fusion","OHE_score","n_std","ASE_score","penalty_expnormal","penalty_amplification","penalty_deletion","gene_score"]
+        columns_output = ["FDR","score","gene_id","gene_name","chr","start","end","sample","distance_to_breakpoint","n_SNPs","fusion","OHE_score","n_std","ASE_score","enhancer_score","penalty_expnormal","penalty_amplification","penalty_deletion","gene_score"]
         if "super_enhancers" in df_result.columns:
             columns_output+= ["super_enhancers"]
         if "enhancers" in df_result.columns:
@@ -236,7 +235,7 @@ class pyjacker:
         random.seed(seed)
         scores=[]
         for i in range(self.n_iterations_FDR):
-            print("Estimating null distribution "+str(i)+"/"+str(self.n_iterations_FDR))
+            print("Estimating null distribution "+str(i+1)+"/"+str(self.n_iterations_FDR))
             df_result = self.find_EH(random_candidates=True)
             if self.group_by_gene:
                 df_result = compute_grouped_gene_scores(df_result)
@@ -255,7 +254,7 @@ def find_EH_genelist(data):
     for gene_id in data["gene_list"]:
         gene = data["genes"][gene_id]
         if np.max(data["df_TPM"].loc[gene_id,:])<1: continue # Require at least one sample which expresses the gene.
-        if np.percentile(data["df_TPM"].loc[gene_id,:],30)>np.max(data["df_TPM"].loc[gene_id,:])*0.05: continue # Require at least 30% of samples to have expression lower than max/20. This reduces the number of tests.
+        if np.percentile(data["df_TPM"].loc[gene_id,:],30)>np.max(data["df_TPM"].loc[gene_id,:])*0.1: continue # Require at least 30% of samples to have expression lower than max/10. This reduces the number of tests.
         if gene.biotype != "protein_coding": continue
         #if gene.chr in ["Y","MT"]: continue
         if not gene.chr in [str(x) for x in range(1,23)] + ["X"]: continue
@@ -304,7 +303,7 @@ def find_EH_genelist(data):
             d["n_SNPs"]=count_SNPs_gene_sample(data["ase_dir"],sample,data["genes"][gene_id])
             d["fusion"]=find_fusion(data["breakpoints"],data["genes_index"],sample,gene,df_fusions=data["df_fusions"])
             if data["df_enhancers"] is not None:
-                d["enhancers"],d["super_enhancers"] = find_enhancers_orientation(data["breakpoints"],data["TADs"],data["df_enhancers"],sample,gene)
+                d["enhancers"],d["super_enhancers"],enhancer_score = find_enhancers_orientation(data["breakpoints"],data["TADs"],data["df_enhancers"],sample,gene)
 
 
             # Score 
@@ -313,6 +312,8 @@ def find_EH_genelist(data):
             d["n_std"]=n_std
             ASE_score = data["weights"]["ASE"] * data["df_ase"].loc[gene_id,sample]
             d["ASE_score"]=ASE_score
+            enhancer_score=data["weights"]["enhancers"]* (enhancer_score)
+            d["enhancer_score"] = enhancer_score
             penalty_expnormal = data["weights"]["expnormal"] * penalty_gene_expressed_normal(data["df_TPM"],data["df_TPM_normal"],gene_id,sample)
             d["penalty_expnormal"]=penalty_expnormal
             penalty_amplification = - data["weights"]["amplification"] * compute_penalty_amplification(data["CNAs"],sample,data["genes"][gene_id])
@@ -320,10 +321,9 @@ def find_EH_genelist(data):
             penalty_deletion = - data["weights"]["deletion"] * gene_is_deleted(data["CNAs"],sample,data["genes"][gene_id])
             #penalty_deletion = - data["weights"]["deletion"] *0.01* compute_penalty_deletion(data["CNAs"],sample,data["genes"][gene_id],data["chr_lengths"])
             d["penalty_deletion"]=penalty_deletion
-            score = OHE_score + ASE_score + penalty_expnormal + penalty_amplification + penalty_deletion
+
+            score = OHE_score + ASE_score + enhancer_score + penalty_expnormal + penalty_amplification + penalty_deletion
             d["score"]=score
-            if score>3 and data["random_candidates"]:
-                print((score,sample,gene.gene_name,OHE_score,ASE_score),flush=True)
             l.append(d)
     return l
 

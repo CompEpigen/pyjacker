@@ -1,22 +1,6 @@
 import numpy as np
-from scipy.stats import nbinom, t
-#import mpmath
-#mpmath.mp.dps = 60 # decimal digits of precision
 
 
-#from scipy.stats import median_absolute_deviation
-
-#import numpy as np
-#import matplotlib.pyplot as plt
-#x1 = np.linspace(-100,2,500)
-##y1=[6*(x-2) for x in x1]
-#y1=[-6*np.log(3-x) for x in x1]
-#x2 =  np.linspace(2,180,500)
-#y2 = [6*np.log(x-1) for x in x2]
-#x = list(x1) + list(x2)
-#y = list(y1) + list(y2)
-#plt.plot(x,y)
-#splt.show()
 
 def scoring_function(x):
     if x>2: return np.log(x-1)

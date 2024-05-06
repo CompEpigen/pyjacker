@@ -1,34 +1,59 @@
+#############################################
+# Output
+#############################################
+
+output_dir: "/omics/groups/OE0219/internal/Etienne/tools/pyjacker/results_AML_new"
+
+#############################################
+# Required inputs
+#############################################
+
+RNA_TPM_file: "/omics/groups/OE0219/internal/Etienne/tools/pyjacker/AML_data/AML_TPM.tsv"
+breakpoints: "/omics/groups/OE0219/internal/Etienne/tools/pyjacker/AML_data/breakpoints.tsv"
+CNAs: "/omics/groups/OE0219/internal/Etienne/tools/pyjacker/AML_data/CNAs.tsv"
+
+gtf: /omics/groups/OE0219/internal/Etienne/data/reference/Homo_sapiens.GRCh37.87.gtf.gz
+chr_arms: "/omics/groups/OE0219/internal/Etienne/tools/pyjacker/data/chr_arms_hg19.txt"
 
 
-# TPM file: rows are genes (ensembl ID) and columns samples.
-RNA_TPM_file: "/home/e840r/Documents/Projects/AML/RNAseq/counts/salmon.merged.gene_tpm.tsv"
-# Can alternatively provide counts file and exonicgene lengths, which will be used to compute TPM
-#RNA_counts_file: "/home/e840r/Documents/Projects/AML/RNAseq/counts/salmon.merged.gene_counts.tsv"
-#exonic_gene_lengths: "/home/e840r/Documents/Data/GRCh37/RNAseq/exonic_gene_lengths.tsv" # required if counts are provided instead of TPM
+#############################################
+# Optional but strongly recommended inputs
+#############################################
 
+# Directory containing the output of gatk ASEReadcounter (one tsv file per sample)
+ase_dir: "/omics/groups/OE0219/internal/Etienne/tools/pyjacker/AML_data/ASEreadcounter"
+# ase_dna_dir will only be used for plotting the DNA VAF compared to the RNA VAF.
+#ase_dna_dir: ""
 
-breakpoints: "/home/e840r/Documents/Projects/AML/WGS/breakpoints.tsv"
-
-CNAs: "/home/e840r/Documents/Projects/AML/WGS/CNAs.tsv"
+# Allele-specific expression will be ignored for imprinted genes, if they are provided.
+imprinted_genes_file: "/omics/groups/OE0219/internal/Etienne/tools/pyjacker/data/imprinted_genes.txt"
 
 # pyjacker looks for SVs in the same TAD as a gene (+ a margin). 
 # If not TADs are provided, it will look for SVs which are up to max_dist_bp2tss from the TSS.
-TADs_file: "/home/e840r/Documents/Data/GRCh37/WGS/TAD/Dixon_IMR90_hg19_liftover.bed"
+TADs_file: "/omics/groups/OE0219/internal/Etienne/tools/pyjacker/data/HSPC_TADs.bed"
 #max_dist_bp2tss: 1500000 
 
-FusionTranscripts_file: "/home/e840r/Documents/Projects/AML/RNAseq/Fusions/fusions_merged_coding.tsv"
+
+##############################################
+# Additional parameters
+#############################################
+
+weight_expnormal: 0
+weight_amplification: 0
+#weight_deletion: 0
+n_iterations_FDR: 30
+
+# Provide fusion transcripts (used for annotating the results)
+fusions: "/omics/groups/OE0219/internal/Etienne/tools/pyjacker/AML_data/fusions_merged.tsv"
+
+# Provide enhancers (used for annotating the results)
+enhancers: "/omics/groups/OE0219/internal/Etienne/tools/pyjacker/AML_data/enhancers.tsv"
 
 
-#SNV_RNA_dir: "/home/e840r/Documents/Projects/AML/WGS/SNV_RNA"
-BAM_DNA_template: "/mnt/cluster/Projects/AML/WGS/BAM/{sample}.bam" # {sample} will be replaced by the sample name
-BAM_RNA_template: "/mnt/cluster/RNAseq/pipeline/star_salmon/C010-AML-{sample}.markdup.sorted.bam"
-# If true, samples with monoallelic expression for a gene will be excluded when estimating the normal distribution for the expression of a gene, even if there are no breakpoints close.
-exclude_monoallelic_from_reference: True 
-
-
-enhancers_bed: /home/e840r/Documents/Data/GRCh37/WGS/enhancers/enhancers_HSPC.bed
+#RNA_TPM_other_samples: /omics/groups/OE0219/internal/Etienne/tools/pyjacker/data/TCGA_Beat_cellLines_TPM.tsv
+RNA_TPM_normal_samples: /omics/groups/OE0219/internal/Etienne/tools/pyjacker/data/ImmuneCells_TPM.tsv
 
 
 
-# Outputs
-output_dir: "/home/e840r/Documents/Projects/AML/Enhancer_hijacking_noref"
+
+

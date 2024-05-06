@@ -147,7 +147,7 @@ def generate_individual_reports(df_result,df_TPM,breakpoints,CNAs,genes,ase_dir,
             config_ase["output"] = {"file":os.path.join(outdir,"Data/Figures/ASE/"+gene_name+"_"+sample+".png"),"dpi":100,"width":100.0}
             config_ase["regions"] = [{"chr":chr,"start":gene_full.start,"end":gene_full.end}]
             config_ase["tracks"] = [{"type":"ase","height":60,"margin_above":1.5,"ase_file":ase_file,"vcf_DNA":vcf_DNA,"grid":False},
-                                    {"type":"genes","height":12.0,"margin_above":-2,"bounding_box": False,"gene_names":[gene_name]},
+                                    {"type":"genes","height":12.0,"margin_above":-2,"bounding_box": False,"genes":[gene_name]},
                                     {"type":"chr_axis","height": 10.0}]
             figeno_make(config_ase)
             ase_plot_exists=True

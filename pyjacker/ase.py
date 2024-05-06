@@ -37,20 +37,19 @@ def compute_ase_matrix(samples,ase_dir,genes,genes_index=None,prior_coef=2.0,imp
     for sample in samples:
         if CNAs is not None and sample in CNAs: CNAs_sample = CNAs[sample]
         else: CNAs_sample = {}
-        print(sample)
         ase_file=os.path.join(ase_dir,sample+".tsv")
         geneIDs2llrs={}
         df_sample = pd.read_csv(ase_file,sep="\t",dtype={"contig":str})
         df_sample["contig"] = [x.lstrip("chr") for x in df_sample["contig"]]
         for x in df_sample.index:
 
-            # Exclude positions which have copy number <2 or >5, because they are expected to deviate from biallelic expression.
+            # Exclude positions which have copy number <2 or >=5, because they are expected to deviate from biallelic expression.
             chr_snp = df_sample.loc[x,"contig"]
             pos_snp = df_sample.loc[x,"position"]
             snp_near_diploid=True
             if chr_snp in CNAs_sample:
                 for (start,end,cn) in CNAs_sample[chr_snp]:
-                    if start<=pos_snp and pos_snp<=end and (cn<2 or cn>5): snp_near_diploid = False
+                    if start<=pos_snp and pos_snp<=end and (cn<2 or cn>=5): snp_near_diploid = False
             if not snp_near_diploid: continue
 
             llr = llr_betabinom(df_sample.loc[x,"altCount"],df_sample.loc[x,"totalCount"])

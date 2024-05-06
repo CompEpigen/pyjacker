@@ -46,6 +46,7 @@ def find_samples_with_breakpoints_near_gene(samples,gene,breakpoints,TADs=None,m
         left_boundary,right_boundary = find_TAD_boundary(gene.chr,TSS_pos,TADs,max_dist_bp2tss)
     else:
         left_boundary,right_boundary = TSS_pos - max_dist_bp2tss , TSS_pos + max_dist_bp2tss
+
     samples_SV = set()
     for bp in breakpoints[gene.chr]:
         if bp.pos1 > left_boundary and bp.pos1 < right_boundary:
@@ -53,6 +54,7 @@ def find_samples_with_breakpoints_near_gene(samples,gene,breakpoints,TADs=None,m
             #    if (not exclude_amplification) or (not gene_is_amplified(breakpoint.sample,gene)):
             if bp.sample in samples:
                 samples_SV.add(bp.sample)
+
     return samples_SV
 
 def read_TADs(TADs_file):
@@ -68,7 +70,7 @@ def read_TADs(TADs_file):
 
 def find_TAD_boundary(chr,pos,TADs,max_dist_bp2tss=1500000):
     """For a given position, find the boundaries of its TAD. If close to a TAD border, also include the next TAD."""
-    dist_beyond_boundary = 100000 # 300000
+    dist_beyond_boundary = 80000 
     index_TAD=0
     while index_TAD +1 < len(TADs[chr]) and pos - dist_beyond_boundary > TADs[chr][index_TAD][1]:
         index_TAD+=1
@@ -112,11 +114,11 @@ def find_fusion(breakpoints,genes_index,sample,gene,df_fusions=None):
     else:
         # Use gene fusions detected in RNAseq data
         gene_name = gene.gene_name
-        fusion=""
+        fusions=[]
         for i in range(df_fusions.shape[0]):
             if df_fusions.loc[i,"sample"]==sample and (df_fusions.loc[i,"LeftGene"]==gene_name or df_fusions.loc[i,"RightGene"]==gene_name):
-                fusion= df_fusions.loc[i,"LeftGene"]+"--"+df_fusions.loc[i,"RightGene"]
-        return fusion
+                fusions.append(df_fusions.loc[i,"LeftGene"]+"--"+df_fusions.loc[i,"RightGene"])
+        return ",".join(fusions)
 
 
 
@@ -179,6 +181,7 @@ def find_enhancers_orientation(breakpoints,TADs,df_enhancers,sample,gene):
 
     enhancers = []
     super_enhancers = []
+    scores=[]
     for bp in breakpoints_filtered:
         left_boundary2,right_boundary2 = find_TAD_boundary(bp.chr2,bp.pos2,TADs)
         if bp.orientation2=="+": left_boundary2=bp.pos2
@@ -188,6 +191,16 @@ def find_enhancers_orientation(breakpoints,TADs,df_enhancers,sample,gene):
                 reg = bp.chr2+":"+str(df_enhancers.loc[i,"START"])+"-"+str(df_enhancers.loc[i,"STOP"])
                 if not reg in enhancers:
                     enhancers.append(reg)
+                    if "avg" in df_enhancers.columns:
+                        scores.append(df_enhancers.loc[i,"avg"]/10000)
+                    else:
+                        if "isSuper" in df_enhancers.columns and df_enhancers.loc[i,"isSuper"]:
+                            scores.append(2)
+                        else: scores.append(0.5)
                     if "isSuper" in df_enhancers.columns and df_enhancers.loc[i,"isSuper"]: super_enhancers.append(reg)
+    scores=sorted(scores,reverse=True)
+    score=0
+    for i in range(len(scores)):
+        score+=scores[i] / (i+1)
 
-    return ",".join(enhancers), ",".join(super_enhancers)
+    return ",".join(enhancers), ",".join(super_enhancers), score
