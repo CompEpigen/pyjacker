@@ -49,7 +49,7 @@ def compute_ase_matrix(samples,ase_dir,genes,genes_index=None,prior_coef=2.0,imp
             snp_near_diploid=True
             if chr_snp in CNAs_sample:
                 for (start,end,cn) in CNAs_sample[chr_snp]:
-                    if start<=pos_snp and pos_snp<=end and (cn<2 or cn>=5): snp_near_diploid = False
+                    if start<=pos_snp and pos_snp<=end and (cn<=2 or cn>=5): snp_near_diploid = False #if cn==2, must be because ploidy was higher.
             if not snp_near_diploid: continue
 
             llr = llr_betabinom(df_sample.loc[x,"altCount"],df_sample.loc[x,"totalCount"])

@@ -10,7 +10,6 @@ output_dir: "/omics/groups/OE0219/internal/Etienne/tools/pyjacker/results_AML_ne
 
 RNA_TPM_file: "/omics/groups/OE0219/internal/Etienne/tools/pyjacker/AML_data/AML_TPM.tsv"
 breakpoints: "/omics/groups/OE0219/internal/Etienne/tools/pyjacker/AML_data/breakpoints.tsv"
-CNAs: "/omics/groups/OE0219/internal/Etienne/tools/pyjacker/AML_data/CNAs.tsv"
 
 gtf: /omics/groups/OE0219/internal/Etienne/data/reference/Homo_sapiens.GRCh37.87.gtf.gz
 chr_arms: "/omics/groups/OE0219/internal/Etienne/tools/pyjacker/data/chr_arms_hg19.txt"
@@ -20,10 +19,14 @@ chr_arms: "/omics/groups/OE0219/internal/Etienne/tools/pyjacker/data/chr_arms_hg
 # Optional but strongly recommended inputs
 #############################################
 
+# Copy number alterations (used to correct for gene expression, and also add breakpoints if missed by the SV caller)
+CNAs: "/omics/groups/OE0219/internal/Etienne/tools/pyjacker/AML_data/CNAs.tsv"
+
 # Directory containing the output of gatk ASEReadcounter (one tsv file per sample)
 ase_dir: "/omics/groups/OE0219/internal/Etienne/tools/pyjacker/AML_data/ASEreadcounter"
 # ase_dna_dir will only be used for plotting the DNA VAF compared to the RNA VAF.
 #ase_dna_dir: ""
+
 
 # Allele-specific expression will be ignored for imprinted genes, if they are provided.
 imprinted_genes_file: "/omics/groups/OE0219/internal/Etienne/tools/pyjacker/data/imprinted_genes.txt"
@@ -38,21 +41,21 @@ TADs_file: "/omics/groups/OE0219/internal/Etienne/tools/pyjacker/data/HSPC_TADs.
 # Additional parameters
 #############################################
 
-weight_expnormal: 0
-weight_amplification: 0
-#weight_deletion: 0
-n_iterations_FDR: 30
-
 # Provide fusion transcripts (used for annotating the results)
-fusions: "/omics/groups/OE0219/internal/Etienne/tools/pyjacker/AML_data/fusions_merged.tsv"
+fusions: "/omics/groups/OE0219/internal/Etienne/tools/pyjacker/AML_data/fusions.tsv"
 
 # Provide enhancers (used for annotating the results)
-enhancers: "/omics/groups/OE0219/internal/Etienne/tools/pyjacker/AML_data/enhancers.tsv"
+enhancers: "/omics/groups/OE0219/internal/Etienne/tools/pyjacker/AML_data/enhancers_myeloid.tsv"
 
+# These weights influence the scoring of the candidate enhancer hijacking events, but their default values should work well.
+weight_OHE: 4 # weight for the outlier high expression score
+weight_ASE: 2 # weight for the allele specific expression
+weight_enhancers: 1 # weight for the enhancers score
+weight_deletion: 5 # weight for the deletion (penalize if a gene is deleted in a sample)
 
-#RNA_TPM_other_samples: /omics/groups/OE0219/internal/Etienne/tools/pyjacker/data/TCGA_Beat_cellLines_TPM.tsv
-RNA_TPM_normal_samples: /omics/groups/OE0219/internal/Etienne/tools/pyjacker/data/ImmuneCells_TPM.tsv
-
+# Number of times to iterate through all genes when generating the null distribution for the false discovery rate.
+# A smaller number of iterations is faster, but leads to an FDR which is not as precise.
+n_iterations_FDR: 50
 
 
 

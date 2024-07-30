@@ -30,13 +30,11 @@ class pyjacker:
             else: self.n_threads = 6
 
             # Params
-            self.weights = {"OHE":4.0,"ASE":2.0,"expnormal":2.0,"amplification":0.2,"deletion":5,"enhancers":1.0}
+            self.weights = {"OHE":4.0,"ASE":2.0,"enhancers":1.0,"deletion":5}
             if "weight_OHE" in data_yaml:  self.weights["OHE"] = float(data_yaml["weight_OHE"])
             if "weight_ASE" in data_yaml:  self.weights["ASE"] = float(data_yaml["weight_ASE"])
-            if "weight_expnormal" in data_yaml:  self.weights["expnormal"] = float(data_yaml["weight_expnormal"])
-            if "weight_amplification" in data_yaml:  self.weights["amplification"] = float(data_yaml["weight_amplification"])
-            if "weight_deletion" in data_yaml:  self.weights["deletion"] = float(data_yaml["weight_deletion"])
             if "weight_enhancers" in data_yaml:  self.weights["enhancers"] = float(data_yaml["weight_enhancers"])
+            if "weight_deletion" in data_yaml:  self.weights["deletion"] = float(data_yaml["weight_deletion"])
 
             # gtf
             if "gtf" in data_yaml:
@@ -87,7 +85,7 @@ class pyjacker:
 
 
             # Breakpoints
-            if (not "breakpoints" in data_yaml) and (not "CNAs" in data_yaml): 
+            if (not "breakpoints" in data_yaml) and (not "mds" in data_yaml): 
                 sys.exit("Missing breakpoints (or at least CNAs) in the config file.")
             self.df_breakpoints = None
             if "breakpoints" in data_yaml:
@@ -154,7 +152,7 @@ class pyjacker:
             if "n_iterations_FDR" in data_yaml:
                 self.n_iterations_FDR = data_yaml["n_iterations_FDR"]
             else:
-                self.n_iterations_FDR = 10
+                self.n_iterations_FDR = 50
                 
 
 
@@ -219,7 +217,7 @@ class pyjacker:
 
         df_result = df_result.loc[df_result["score"]>0,:]
         df_result = df_result.reset_index(drop=True) 
-        columns_output = ["FDR","score","gene_id","gene_name","chr","start","end","sample","distance_to_breakpoint","n_SNPs","fusion","OHE_score","n_std","ASE_score","enhancer_score","penalty_expnormal","penalty_amplification","penalty_deletion","gene_score"]
+        columns_output = ["FDR","score","gene_id","gene_name","chr","start","end","sample","distance_to_breakpoint","n_SNPs","fusion","OHE_score","n_std","ASE_score","enhancer_score","penalty_deletion","gene_score"]
         if "super_enhancers" in df_result.columns:
             columns_output+= ["super_enhancers"]
         if "enhancers" in df_result.columns:
@@ -268,8 +266,6 @@ def find_EH_genelist(data):
 
         # For estimating the null distribution: select some candidates among the reference samples, and remove them from the reference.
         # That way, all "candidate" samples should not be true enhancer hijacking events, so we can estimate the null distribution.
-                
-
         if data["random_candidates"]:
             if len(data["samples"])>10:
                 n_candidates = min(random.randint(1,3),len(reference_samples)-8)
@@ -304,6 +300,7 @@ def find_EH_genelist(data):
             d["fusion"]=find_fusion(data["breakpoints"],data["genes_index"],sample,gene,df_fusions=data["df_fusions"])
             if data["df_enhancers"] is not None:
                 d["enhancers"],d["super_enhancers"],enhancer_score = find_enhancers_orientation(data["breakpoints"],data["TADs"],data["df_enhancers"],sample,gene)
+            else: d["enhancers"],d["super_enhancers"],enhancer_score="","",0
 
 
             # Score 
@@ -314,15 +311,10 @@ def find_EH_genelist(data):
             d["ASE_score"]=ASE_score
             enhancer_score=data["weights"]["enhancers"]* (enhancer_score)
             d["enhancer_score"] = enhancer_score
-            penalty_expnormal = data["weights"]["expnormal"] * penalty_gene_expressed_normal(data["df_TPM"],data["df_TPM_normal"],gene_id,sample)
-            d["penalty_expnormal"]=penalty_expnormal
-            penalty_amplification = - data["weights"]["amplification"] * compute_penalty_amplification(data["CNAs"],sample,data["genes"][gene_id])
-            d["penalty_amplification"]=penalty_amplification
             penalty_deletion = - data["weights"]["deletion"] * gene_is_deleted(data["CNAs"],sample,data["genes"][gene_id])
-            #penalty_deletion = - data["weights"]["deletion"] *0.01* compute_penalty_deletion(data["CNAs"],sample,data["genes"][gene_id],data["chr_lengths"])
             d["penalty_deletion"]=penalty_deletion
 
-            score = OHE_score + ASE_score + enhancer_score + penalty_expnormal + penalty_amplification + penalty_deletion
+            score = OHE_score + ASE_score + enhancer_score + penalty_deletion
             d["score"]=score
             l.append(d)
     return l
@@ -368,8 +360,6 @@ def main():
     if len(sys.argv)<2: sys.exit("Please provide a config file (eg: pyjacker config.yaml).")
     pyjack = pyjacker(sys.argv[1])
     df_result=pyjack.find_EH(random_candidates=False)
-    df_result.to_csv("test.tsv",sep="\t")
-    #null_distribution=None
     null_distribution = pyjack.estimate_null_distribution()
     pyjack.save_results(df_result,null_distribution=null_distribution)
 
