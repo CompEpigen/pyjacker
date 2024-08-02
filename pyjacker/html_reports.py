@@ -131,22 +131,22 @@ def generate_individual_reports(df_result,df_TPM,breakpoints,CNAs,genes,ase_dir,
                 config_chr["output"] = {"file":os.path.join(outdir,"Data/Figures/chr_plots/"+sample+"_"+gene_name+".png"),"dpi":200,"width":183.0}
                 config_chr["regions"] = [{"chr":chr}]
                 config_chr["tracks"] = [{"type":"sv","height": 10.0,"margin_above": 0.0,"bounding_box": True,"df_SVs":df_SVs},
-                                        {"type":"copynumber","height": 30.0,"margin_above": 0.0,"bounding_box": True,"CNAs":CNAs[sample],"genes":[gene_name],
+                                        {"type":"copynumber","height": 30.0,"margin_above": 0.0,"bounding_box": True,"CNAs":CNAs[sample],"genes":gene_name,
                                         "min_cn":None,"max_cn":None},
                                         {"type":"chr_axis","height": 10.0,"unit":"Mb","margin_above":0.0}]
                 figeno_make(config_chr)
-
-        if (ase_dir is not None) and (cytobands is not None):
+        ase_plot_exists=False
+        if (ase_dir is not None):
             ase_file=os.path.join(ase_dir,sample+".tsv")
             vcf_DNA= None
             if ase_dna_dir is not None: vcf_DNA = os.path.join(ase_dna_dir,sample+".vcf.gz")
 
             # ASE plot
-            config_ase={"general":{"reference":"custom","layout":"horizontal","genes_file":gtf_file,"cytobands_file":cytobands}}
+            config_ase={"general":{"reference":"custom","layout":"horizontal","genes_file":gtf_file}}
             config_ase["output"] = {"file":os.path.join(outdir,"Data/Figures/ASE/"+gene_name+"_"+sample+".png"),"dpi":100,"width":100.0}
             config_ase["regions"] = [{"chr":chr,"start":gene_full.start,"end":gene_full.end}]
             config_ase["tracks"] = [{"type":"ase","height":60,"margin_above":1.5,"ase_file":ase_file,"vcf_DNA":vcf_DNA,"grid":False},
-                                    {"type":"genes","height":12.0,"margin_above":-2,"bounding_box": False,"genes":[gene_name]},
+                                    {"type":"genes","height":12.0,"margin_above":-2,"bounding_box": False,"genes":gene_name},
                                     {"type":"chr_axis","height": 10.0}]
             figeno_make(config_ase)
             ase_plot_exists=True
@@ -171,7 +171,7 @@ def generate_individual_reports(df_result,df_TPM,breakpoints,CNAs,genes,ase_dir,
             tmp = outfile.write("<h1>Enhancer hijacking of " + gene_name+" in sample " + sample + "</h1>\n")
             tmp = outfile.write("<p>"+gene_name+" chr"+chr+":" +f'{gene_full.start:,}'+"-"+f'{gene_full.end:,}' + " (hg19) </p>")
             tmp = outfile.write("<img style=\"height:auto;width:30%;\" src=\"../Figures/Expression/"+gene_name+"_"+sample+".png\" alt=\"Expression plot\">\n")
-            if CNAs is not None:
+            if (CNAs is not None) and (cytobands is not None):
                 tmp = outfile.write("<h2> Copy number and SV plot</h2>\n")
                 tmp = outfile.write("<img style=\"height:auto;width:70%;\" src=\"../Figures/chr_plots/"+sample+"_"+gene_name+".png\" alt=\"Copy number plot\">\n")
             #tmp = outfile.write("<h2>Circos plot</h2>\n")

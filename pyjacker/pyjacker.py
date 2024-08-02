@@ -53,12 +53,13 @@ class pyjacker:
             if "max_dist_bp2tss" in data_yaml: 
                 self.max_dist_bp2tss= data_yaml["max_dist_bp2tss"]
 
+            #cytobands
             if "cytobands" in data_yaml:
                 self.cytobands = data_yaml["cytobands"]
                 self.chr_lengths={}
                 with open(self.cytobands,"r") as infile:
                     for line in infile:
-                        linesplit = line.split(" ")
+                        linesplit = line.split("\t")
                         chr=linesplit[0].lstrip("chr")
                         pos=int(linesplit[2])
                         if chr in self.chr_lengths: self.chr_lengths[chr]=max(self.chr_lengths[chr],pos)
@@ -185,7 +186,7 @@ class pyjacker:
         df_result = pd.DataFrame(results_flattened)
         if not df_result.empty:
             df_result = df_result.sort_values("score",ascending=False)
-        print(df_result)
+        #print(df_result)
         return df_result
     
     
@@ -229,6 +230,7 @@ class pyjacker:
         df_result.to_csv(os.path.join(self.output_dir,"enhancer_hijacking.tsv"),index=False,sep="\t")
         generate_main_report(df_result,self.output_dir,300,filter_monoallelic=False)
         generate_individual_reports(df_result,self.df_TPM,self.breakpoints,self.CNAs,self.genes,self.ase_dir,self.ase_dna_dir,self.gtf_file,self.output_dir,self.cytobands,n_events=100)
+        print("Pyjacker completed successfully! The results are stored in "+self.output_dir+".")
 
     def estimate_null_distribution(self,seed=0):
         if self.n_iterations_FDR==0: return None
