@@ -53,16 +53,18 @@ class pyjacker:
             if "max_dist_bp2tss" in data_yaml: 
                 self.max_dist_bp2tss= data_yaml["max_dist_bp2tss"]
 
-            if "chr_arms" in data_yaml:
-                self.chr_arms = data_yaml["chr_arms"]
+            if "cytobands" in data_yaml:
+                self.cytobands = data_yaml["cytobands"]
                 self.chr_lengths={}
-                with open(self.chr_arms,"r") as infile:
+                with open(self.cytobands,"r") as infile:
                     for line in infile:
                         linesplit = line.split(" ")
-                        if linesplit[0].endswith("q"):
-                            self.chr_lengths[linesplit[1].lstrip("chr")] = int(linesplit[3])
+                        chr=linesplit[0].lstrip("chr")
+                        pos=int(linesplit[2])
+                        if chr in self.chr_lengths: self.chr_lengths[chr]=max(self.chr_lengths[chr],pos)
+                        else: self.chr_lengths[chr]=pos
             else:
-                self.chr_arms = None
+                self.cytobands = None
                 self.chr_lengths=None
         
             # Gene expression
@@ -85,7 +87,7 @@ class pyjacker:
 
 
             # Breakpoints
-            if (not "breakpoints" in data_yaml) and (not "mds" in data_yaml): 
+            if (not "breakpoints" in data_yaml) and (not "CNAs" in data_yaml): 
                 sys.exit("Missing breakpoints (or at least CNAs) in the config file.")
             self.df_breakpoints = None
             if "breakpoints" in data_yaml:
@@ -226,7 +228,7 @@ class pyjacker:
         os.makedirs(self.output_dir,exist_ok=True)
         df_result.to_csv(os.path.join(self.output_dir,"enhancer_hijacking.tsv"),index=False,sep="\t")
         generate_main_report(df_result,self.output_dir,300,filter_monoallelic=False)
-        generate_individual_reports(df_result,self.df_TPM,self.breakpoints,self.CNAs,self.genes,self.ase_dir,self.ase_dna_dir,self.gtf_file,self.output_dir,self.chr_arms,n_events=100)
+        generate_individual_reports(df_result,self.df_TPM,self.breakpoints,self.CNAs,self.genes,self.ase_dir,self.ase_dna_dir,self.gtf_file,self.output_dir,self.cytobands,n_events=100)
 
     def estimate_null_distribution(self,seed=0):
         if self.n_iterations_FDR==0: return None

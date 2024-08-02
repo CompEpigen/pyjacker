@@ -12,7 +12,7 @@ RNA_TPM_file: "/omics/groups/OE0219/internal/Etienne/tools/pyjacker/AML_data/AML
 breakpoints: "/omics/groups/OE0219/internal/Etienne/tools/pyjacker/AML_data/breakpoints.tsv"
 
 gtf: /omics/groups/OE0219/internal/Etienne/data/reference/Homo_sapiens.GRCh37.87.gtf.gz
-chr_arms: "/omics/groups/OE0219/internal/Etienne/tools/pyjacker/data/chr_arms_hg19.txt"
+cytobands: "/omics/groups/OE0219/internal/Etienne/tools/pyjacker/data/cytobands_hg19.tsv"
 
 
 #############################################

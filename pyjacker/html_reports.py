@@ -51,7 +51,7 @@ def generate_main_report(df_result,outdir,n_events=400,filter_monoallelic=False)
         tmp = outfile.write("<p style=\"margin-top:2.5em\"> </p>\n")
         tmp = outfile.write("<div style=\"width:80%\">\n")
         tmp = outfile.write("<table id=\"cosmic\" class=\"display\" >\n")
-        tmp = outfile.write("<thead><tr id=\"header\"><th>Rank</th><th>FDR</th><th>Score</th><th>Gene</th><th>Chr</th><th>Start</th><th>End</th><th>Sample</th><th>Distance to breakpoint</th><th>Fusion</th><th>n_SNPs</th><th>OHE score</th><th>ASE score</th><th>normal exp penalty</th><th>del penalty</th></tr></thead>\n")
+        tmp = outfile.write("<thead><tr id=\"header\"><th>Rank</th><th>FDR</th><th>Score</th><th>Gene</th><th>Chr</th><th>Start</th><th>End</th><th>Sample</th><th>Distance to breakpoint</th><th>Fusion</th><th>n_SNPs</th><th>OHE score</th><th>ASE score</th><th>Enhancer score</th></tr></thead>\n")
         tmp = outfile.write("<tbody>\n")
         rank=1
         for i in range(min(df_result.shape[0],n_events)):
@@ -61,7 +61,7 @@ def generate_main_report(df_result,outdir,n_events=400,filter_monoallelic=False)
                 tmp = outfile.write("<tr><td>" +str(rank) + "</td><td>"+FDR+"</td><td>"+format_float(df_result.loc[i,"score"])+"</td><td>"+df_result.loc[i,"gene_name"]+"</td><td>"+ df_result.loc[i,"chr"]+ "</td><td>"\
                     +str(df_result.loc[i,"start"]) + "</td><td>" +str(df_result.loc[i,"end"]) + "</td><td>" \
                     + "<a target=\"_blank\" href=\"Data/html/"+df_result.loc[i,"gene_name"]+"_"+df_result.loc[i,"sample"]+".html\">" +df_result.loc[i,"sample"] + "</a>"+"</td><td>"
-                    + f'{df_result.loc[i,"distance_to_breakpoint"]:,}'+ "</td><td>"+ df_result.loc[i,"fusion"] +"</td><td>"+ str(df_result.loc[i,"n_SNPs"])+ "</td><td>"+ format_float(df_result.loc[i,"OHE_score"])+"</td><td>"+ format_float(df_result.loc[i,"ASE_score"])+"</td><td>"+ format_float(df_result.loc[i,"penalty_expnormal"])+"</td><td>"+ format_float(df_result.loc[i,"penalty_deletion"])+"</td></tr>\n")
+                    + f'{df_result.loc[i,"distance_to_breakpoint"]:,}'+ "</td><td>"+ df_result.loc[i,"fusion"] +"</td><td>"+ str(df_result.loc[i,"n_SNPs"])+ "</td><td>"+ format_float(df_result.loc[i,"OHE_score"])+"</td><td>"+ format_float(df_result.loc[i,"ASE_score"])+"</td><td>"+ format_float(df_result.loc[i,"enhancer_score"])+"</td></tr>\n")
                 rank+=1
         tmp = outfile.write("</table>\n</tbody>\n</div>\n</body>\n</html>\n")
         tmp = outfile.write("")
@@ -89,7 +89,7 @@ def write_SNPs(sample,gene,ase_dir,outfile):
 
 
 
-def generate_individual_reports(df_result,df_TPM,breakpoints,CNAs,genes,ase_dir,ase_dna_dir,gtf_file,outdir,chr_arms,df_TPM_normal=None,n_events=200):
+def generate_individual_reports(df_result,df_TPM,breakpoints,CNAs,genes,ase_dir,ase_dna_dir,gtf_file,outdir,cytobands,df_TPM_normal=None,n_events=200):
     df_result = df_result.copy(deep=True)
     df_result = df_result.loc[df_result["score"]>=0,:].reset_index(drop=True)
     os.makedirs(os.path.join(outdir,"Data/html"), exist_ok=True)
@@ -126,24 +126,23 @@ def generate_individual_reports(df_result,df_TPM,breakpoints,CNAs,genes,ase_dir,
                     elif bp.orientation1=="-" and bp.orientation2=="-": d_SV["color"].append("purple")
                     else: d_SV["color"].append("#e58e26")
             df_SVs = pd.DataFrame(d_SV)
-            config_chr={"general":{"reference":"custom","layout":"horizontal","genes_file":gtf_file,"chrarms_file":chr_arms}}
-            config_chr["output"] = {"file":os.path.join(outdir,"Data/Figures/chr_plots/"+sample+"_"+gene_name+".png"),"dpi":200,"width":183.0}
-            config_chr["regions"] = [{"chr":chr}]
-            config_chr["tracks"] = [{"type":"sv","height": 10.0,"margin_above": 0.0,"bounding_box": True,"df_SVs":df_SVs},
-                                    {"type":"copynumber","height": 30.0,"margin_above": 0.0,"bounding_box": True,"CNAs":CNAs[sample],"genes":[gene_name],
-                                     "min_cn":None,"max_cn":None},
-                                    {"type":"chr_axis","height": 10.0,"unit":"Mb","margin_above":0.0}]
-            figeno_make(config_chr)
-            #plot_WGS(sample,chr,CNAs,breakpoints,os.path.join(outdir,"Data/Figures/chr_plots/",sample+"_"+gene_name+".png"),gene_full,chrArms=chr_arms)
-        #os.makedirs(os.path.join(outdir,"Data/Figures/Expression_reference/"), exist_ok=True)
-        #reference_plot_exists = rank_order_plot(gene_full,os.path.join(outdir,"Data/Figures/Expression_reference/"+gene_name+"_reference.png"))
-        if ase_dir is not None:
+            if cytobands is not None:
+                config_chr={"general":{"reference":"custom","layout":"horizontal","genes_file":gtf_file,"cytobands_file":cytobands}}
+                config_chr["output"] = {"file":os.path.join(outdir,"Data/Figures/chr_plots/"+sample+"_"+gene_name+".png"),"dpi":200,"width":183.0}
+                config_chr["regions"] = [{"chr":chr}]
+                config_chr["tracks"] = [{"type":"sv","height": 10.0,"margin_above": 0.0,"bounding_box": True,"df_SVs":df_SVs},
+                                        {"type":"copynumber","height": 30.0,"margin_above": 0.0,"bounding_box": True,"CNAs":CNAs[sample],"genes":[gene_name],
+                                        "min_cn":None,"max_cn":None},
+                                        {"type":"chr_axis","height": 10.0,"unit":"Mb","margin_above":0.0}]
+                figeno_make(config_chr)
+
+        if (ase_dir is not None) and (cytobands is not None):
             ase_file=os.path.join(ase_dir,sample+".tsv")
             vcf_DNA= None
             if ase_dna_dir is not None: vcf_DNA = os.path.join(ase_dna_dir,sample+".vcf.gz")
 
             # ASE plot
-            config_ase={"general":{"reference":"custom","layout":"horizontal","genes_file":gtf_file,"chrarms_file":chr_arms}}
+            config_ase={"general":{"reference":"custom","layout":"horizontal","genes_file":gtf_file,"cytobands_file":cytobands}}
             config_ase["output"] = {"file":os.path.join(outdir,"Data/Figures/ASE/"+gene_name+"_"+sample+".png"),"dpi":100,"width":100.0}
             config_ase["regions"] = [{"chr":chr,"start":gene_full.start,"end":gene_full.end}]
             config_ase["tracks"] = [{"type":"ase","height":60,"margin_above":1.5,"ase_file":ase_file,"vcf_DNA":vcf_DNA,"grid":False},
