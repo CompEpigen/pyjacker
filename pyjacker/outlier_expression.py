@@ -67,16 +67,6 @@ def find_outlier_samples(df_TPM,genes=None,TissGDB_file=None):
                     sample2tissue[sample] = "Possible contamination from " +",".join(tissues)
     return sample2tissue
 
-
-
-def compute_ohe_pval(df_TPM,gene_id,reference_samples,sample):
-    exp = np.log(0.5+df_TPM.loc[gene_id,:])
-    mean_reference = np.mean(exp[reference_samples])
-    std_reference = np.std(exp[reference_samples]) + 0.3
-    tstat = (exp[sample]-mean_reference)/std_reference / np.sqrt(1+1/(len(reference_samples)-1))
-    pval = t.sf(tstat,(len(reference_samples)-1))
-    return pval
-
 def penalty_gene_expressed_normal(df_TPM,df_TPM_normal,gene_id,sample):
     if (not df_TPM_normal is None) and gene_id in df_TPM_normal.index:
         exp_sample = df_TPM.loc[gene_id,sample]

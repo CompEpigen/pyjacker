@@ -52,7 +52,7 @@ def compute_ase_matrix(samples,ase_dir,genes,genes_index=None,prior_coef=2.0,imp
                     if start<=pos_snp and pos_snp<=end and (cn<=2 or cn>=5): snp_near_diploid = False #if cn==2, must be because ploidy was higher.
             if not snp_near_diploid: continue
 
-            llr = llr_betabinom(df_sample.loc[x,"altCount"],df_sample.loc[x,"totalCount"])
+            llr = llr_betabinom(df_sample.loc[x,"altCount"], df_sample.loc[x,"altCount"]+df_sample.loc[x,"refCount"])
             for g in genes_at_locus(genes_index,df_sample.loc[x,"contig"].lstrip("chr"),int(df_sample.loc[x,"position"])):
                 if not g.gene_id in geneIDs2llrs: geneIDs2llrs[g.gene_id]=[]
                 geneIDs2llrs[g.gene_id].append(llr)
@@ -86,25 +86,3 @@ def count_SNPs_gene_sample(ase_dir,sample,gene=None):
     df = df.loc[df["contig"]==chr]
     df = df.loc[(df["position"]>=start) & (df["position"]<=end)]
     return df.shape[0]
-
-"""
-def pval_betabinom(k,n,alpha=10,beta=10):
-    if k<n/2:
-        return 2*betabinom.cdf(k,n,alpha,beta)
-    else:
-        return 2*betabinom.cdf(n-k,n,alpha,beta)
-"""
-
-
-"""
-def find_samples_monoallelic_expression(gene_id,threshold=4):
-    if not "ASE_scores" in dir(config):
-        return []
-    else:
-        samples_monoallelic = []
-        for sample in config.samples:
-            if config.ASE_scores[sample][gene_id]>=threshold:
-                samples_monoallelic.append(sample)
-        return samples_monoallelic
-
-"""

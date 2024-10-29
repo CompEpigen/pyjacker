@@ -3,6 +3,8 @@
 #############################################
 
 output_dir: "/omics/groups/OE0219/internal/Etienne/tools/pyjacker/results_AML"
+image_format: "svg" # Format of the images generated in the report. Can be svg, png or pdf
+image_dpi: 200 # Resolution of the images generated in the report, if the format is png
 
 #############################################
 # Required inputs
@@ -14,7 +16,6 @@ breakpoints: "/omics/groups/OE0219/internal/Etienne/tools/pyjacker/AML_data/brea
 gtf: /omics/groups/OE0219/internal/Etienne/data/reference/Homo_sapiens.GRCh37.87.gtf.gz
 cytobands: "/omics/groups/OE0219/internal/Etienne/tools/pyjacker/data/cytobands_hg19.tsv"
 
-
 #############################################
 # Optional but strongly recommended inputs
 #############################################
@@ -22,11 +23,8 @@ cytobands: "/omics/groups/OE0219/internal/Etienne/tools/pyjacker/data/cytobands_
 # Copy number alterations (used to correct for gene expression, and also add breakpoints if missed by the SV caller)
 CNAs: "/omics/groups/OE0219/internal/Etienne/tools/pyjacker/AML_data/CNAs.tsv"
 
-# Directory containing the output of gatk ASEReadcounter (one tsv file per sample)
-ase_dir: "/omics/groups/OE0219/internal/Etienne/tools/pyjacker/AML_data/ASEreadcounter"
-# ase_dna_dir will only be used for plotting the DNA VAF compared to the RNA VAF.
-#ase_dna_dir: ""
-
+# Directory containing the output of fast_ase (or GATK ASEReadcounter). This directory contains one tsv file per sample, called {sample}.tsv
+ase_dir: "/omics/groups/OE0219/internal/Etienne/tools/pyjacker/AML_data/ASE"
 
 # Allele-specific expression will be ignored for imprinted genes, if they are provided.
 imprinted_genes_file: "/omics/groups/OE0219/internal/Etienne/tools/pyjacker/data/imprinted_genes.txt"
@@ -36,6 +34,9 @@ imprinted_genes_file: "/omics/groups/OE0219/internal/Etienne/tools/pyjacker/data
 TADs_file: "/omics/groups/OE0219/internal/Etienne/tools/pyjacker/data/HSPC_TADs.bed"
 #max_dist_bp2tss: 1500000 
 
+# Provide enhancers scored by ROSE, for the correct cell type.
+# This is optional, but if provided, it will be used to score the candidate enhancer hijacking events, in addition to outlier expression and allele-specific expression.
+enhancers: "/omics/groups/OE0219/internal/Etienne/tools/pyjacker/AML_data/enhancers_myeloid.tsv"
 
 ##############################################
 # Additional parameters
@@ -43,9 +44,6 @@ TADs_file: "/omics/groups/OE0219/internal/Etienne/tools/pyjacker/data/HSPC_TADs.
 
 # Provide fusion transcripts (used for annotating the results)
 fusions: "/omics/groups/OE0219/internal/Etienne/tools/pyjacker/AML_data/fusions.tsv"
-
-# Provide enhancers (used for annotating the results)
-enhancers: "/omics/groups/OE0219/internal/Etienne/tools/pyjacker/AML_data/enhancers_myeloid.tsv"
 
 # These weights influence the scoring of the candidate enhancer hijacking events, but their default values should work well.
 weight_OHE: 4 # weight for the outlier high expression score

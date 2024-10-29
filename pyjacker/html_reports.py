@@ -89,7 +89,7 @@ def write_SNPs(sample,gene,ase_dir,outfile):
 
 
 
-def generate_individual_reports(df_result,df_TPM,breakpoints,CNAs,genes,ase_dir,ase_dna_dir,gtf_file,outdir,cytobands,df_TPM_normal=None,n_events=200):
+def generate_individual_reports(df_result,df_TPM,breakpoints,CNAs,genes,ase_dir,ase_dna_dir,gtf_file,outdir,cytobands,df_TPM_normal=None,n_events=200,image_format="png",image_dpi=200):
     df_result = df_result.copy(deep=True)
     df_result = df_result.loc[df_result["score"]>=0,:].reset_index(drop=True)
     os.makedirs(os.path.join(outdir,"Data/html"), exist_ok=True)
@@ -109,8 +109,8 @@ def generate_individual_reports(df_result,df_TPM,breakpoints,CNAs,genes,ase_dir,
         gene_name = df_result.loc[i,"gene_name"]
         gene_full = genes[df_result.loc[i,"gene_id"]]
         chr = df_result.loc[i,"chr"]
-        plot_expression(os.path.join(outdir,"Data/Figures/Expression/"+gene_name+"_"+sample+".png"),
-                        df_TPM,gene_id=gene_full.gene_id,gene_name=gene_full.gene_name,samples={sample:sample},colors={sample:"#27ae60"})
+        plot_expression(os.path.join(outdir,"Data/Figures/Expression/"+gene_name+"_"+sample+"."+image_format),
+                        df_TPM,gene_id=gene_full.gene_id,gene_name=gene_full.gene_name,samples={sample:sample},colors={sample:"#27ae60"},image_dpi=image_dpi)
         if CNAs is not None:
             d_SV={"chr1":[],"pos1":[],"chr2":[],"pos2":[],"color":[]}
             for bp in breakpoints[chr]:
@@ -128,7 +128,7 @@ def generate_individual_reports(df_result,df_TPM,breakpoints,CNAs,genes,ase_dir,
             df_SVs = pd.DataFrame(d_SV)
             if cytobands is not None:
                 config_chr={"general":{"reference":"custom","layout":"horizontal","genes_file":gtf_file,"cytobands_file":cytobands}}
-                config_chr["output"] = {"file":os.path.join(outdir,"Data/Figures/chr_plots/"+sample+"_"+gene_name+".png"),"dpi":200,"width":183.0}
+                config_chr["output"] = {"file":os.path.join(outdir,"Data/Figures/chr_plots/"+sample+"_"+gene_name+"."+image_format),"dpi":image_dpi,"width":183.0}
                 config_chr["regions"] = [{"chr":chr}]
                 config_chr["tracks"] = [{"type":"sv","height": 10.0,"margin_above": 0.0,"bounding_box": True,"df_SVs":df_SVs},
                                         {"type":"copynumber","height": 30.0,"margin_above": 0.0,"bounding_box": True,"CNAs":CNAs[sample],"genes":gene_name,
@@ -143,7 +143,7 @@ def generate_individual_reports(df_result,df_TPM,breakpoints,CNAs,genes,ase_dir,
 
             # ASE plot
             config_ase={"general":{"reference":"custom","layout":"horizontal","genes_file":gtf_file}}
-            config_ase["output"] = {"file":os.path.join(outdir,"Data/Figures/ASE/"+gene_name+"_"+sample+".png"),"dpi":100,"width":100.0}
+            config_ase["output"] = {"file":os.path.join(outdir,"Data/Figures/ASE/"+gene_name+"_"+sample+"."+image_format),"dpi":image_dpi,"width":100.0}
             config_ase["regions"] = [{"chr":chr,"start":gene_full.start,"end":gene_full.end}]
             config_ase["tracks"] = [{"type":"ase","height":60,"margin_above":1.5,"ase_file":ase_file,"vcf_DNA":vcf_DNA,"grid":False},
                                     {"type":"genes","height":12.0,"margin_above":-2,"bounding_box": False,"genes":gene_name},
@@ -170,18 +170,16 @@ def generate_individual_reports(df_result,df_TPM,breakpoints,CNAs,genes,ase_dir,
             #tmp = outfile.write("<style>img:hover {transform:scale(1.5);-ms-transform:scale(1.5); /* IE 9 */-moz-transform:scale(1.5); /* Firefox */-webkit-transform:scale(1.5); /* Safari and Chrome */-o-transform:scale(1.5); /* Opera */}</style>")
             tmp = outfile.write("<h1>Enhancer hijacking of " + gene_name+" in sample " + sample + "</h1>\n")
             tmp = outfile.write("<p>"+gene_name+" chr"+chr+":" +f'{gene_full.start:,}'+"-"+f'{gene_full.end:,}' + " (hg19) </p>")
-            tmp = outfile.write("<img style=\"height:auto;width:30%;\" src=\"../Figures/Expression/"+gene_name+"_"+sample+".png\" alt=\"Expression plot\">\n")
+            tmp = outfile.write("<img style=\"height:auto;width:30%;\" src=\"../Figures/Expression/"+gene_name+"_"+sample+"."+image_format+"\" alt=\"Expression plot\">\n")
             if (CNAs is not None) and (cytobands is not None):
                 tmp = outfile.write("<h2> Copy number and SV plot</h2>\n")
-                tmp = outfile.write("<img style=\"height:auto;width:70%;\" src=\"../Figures/chr_plots/"+sample+"_"+gene_name+".png\" alt=\"Copy number plot\">\n")
-            #tmp = outfile.write("<h2>Circos plot</h2>\n")
-            #tmp = outfile.write("<img style=\"height:auto;width:1000px;\" src=\"../Figures/circos/circos_"+sample+".png\" alt=\"Circos plot\">\n")
+                tmp = outfile.write("<img style=\"height:auto;width:70%;\" src=\"../Figures/chr_plots/"+sample+"_"+gene_name+"."+image_format+"\" alt=\"Copy number plot\">\n")
             tmp = outfile.write("")
             tmp = outfile.write("")
             tmp = outfile.write("")
             if ase_dir is not None and ase_plot_exists:
                 tmp = outfile.write("<h2>Allele specific expression</h2>\n")
-                tmp = outfile.write("<img style=\"height:auto;width:500px;\" src=\"../Figures/ASE/"+gene_name+"_"+sample+".png\" alt=\"ASE plot\">\n")
+                tmp = outfile.write("<img style=\"height:auto;width:500px;\" src=\"../Figures/ASE/"+gene_name+"_"+sample+"."+image_format+"\" alt=\"ASE plot\">\n")
 
             # SVs
             tmp = outfile.write("<h2>Structural variants on chromosome "+chr+"</h2>\n")
@@ -223,25 +221,14 @@ def generate_individual_reports(df_result,df_TPM,breakpoints,CNAs,genes,ase_dir,
                 tmp = outfile.write("</table>\n</tbody>\n")
                 tmp = outfile.write("<script>$('#snv').dataTable({searching: false, paging: false, info: false});</script>")
 
-            #Expression in reference
-            #if reference_plot_exists:
-            #    tmp = outfile.write("<h2>Expression of "+gene_name+" in the reference data</h2>\n")
-            #    tmp = outfile.write("<img style=\"height:auto;width:40%;\" src=\"../Figures/Expression_reference/"+gene_name+"_reference.png\" alt=\"Expression plot in reference\">\n")
-
-            # Expression in other samples
-            #os.makedirs(os.path.join(outdir,"Data/Figures/Expression_other/"), exist_ok=True)
-            #other_plot_exists = rank_order_plot_other(config.df_TPM_other,gene_full,os.path.join(outdir,"Data/Figures/Expression_other/"+gene_name+"_other.png"))
-            #if other_plot_exists:
-            #    tmp = outfile.write("<h2>Expression of "+gene_name+" in other samples</h2>\n")
-            #    tmp = outfile.write("<img style=\"height:auto;width:40%;\" src=\"../Figures/Expression_other/"+gene_name+"_other.png\" alt=\"Expression plot in other samples\">\n")
 
             # Expression in normal samples
             if df_TPM_normal is not None:
                 os.makedirs(os.path.join(outdir,"Data/Figures/Expression_normal/"), exist_ok=True)
-                other_plot_exists = plot_normal_samples(df_TPM_normal,gene_full,os.path.join(outdir,"Data/Figures/Expression_normal/"+gene_name+"_normal.png"))
+                other_plot_exists = plot_normal_samples(df_TPM_normal,gene_full,os.path.join(outdir,"Data/Figures/Expression_normal/"+gene_name+"_normal."+image_format),image_dpi=image_dpi)
                 if other_plot_exists:
                     tmp = outfile.write("<h2>Expression of "+gene_name+" in normal samples</h2>\n")
-                    tmp = outfile.write("<img style=\"height:auto;width:40%;\" src=\"../Figures/Expression_normal/"+gene_name+"_normal.png\" alt=\"Expression plot in normal samples\">\n")
+                    tmp = outfile.write("<img style=\"height:auto;width:40%;\" src=\"../Figures/Expression_normal/"+gene_name+"_normal."+image_format+"\" alt=\"Expression plot in normal samples\">\n")
 
                 
             tmp = outfile.write("<p style=\"margin-top:2.5em\"> </p>\n")
@@ -281,7 +268,7 @@ def rank_order_plot(df_TPM,gene,output_filename,sample=None):
     plt.clf() 
     plt.close('all')
 """
-def plot_normal_samples(df,gene,output_filename):
+def plot_normal_samples(df,gene,output_filename,image_dpi=200):
     if df is None: return False
     if not gene.gene_id in df.index: return False
     matplotlib.rcParams.update({'font.size': 20})
@@ -292,14 +279,14 @@ def plot_normal_samples(df,gene,output_filename):
     plt.tick_params(axis='y', labelsize=10)
     plt.xlim(0,max(np.max(df.loc[gene.gene_id,:]),10))
 
-    plt.savefig(output_filename,bbox_inches="tight",pad_inches=0.1,dpi=60)
+    plt.savefig(output_filename,bbox_inches="tight",pad_inches=0.1,dpi=image_dpi)
 
     plt.cla() 
     plt.clf() 
     plt.close('all')
     return True
 
-def plot_expression(output_filename,df_TPM,gene_name=None,gene_id=None,samples=None,colors=None,gtf_file=None,plot_legend=False):
+def plot_expression(output_filename,df_TPM,gene_name=None,gene_id=None,samples=None,colors=None,gtf_file=None,plot_legend=False,image_dpi=200):
     """
     samples: dictionary: group to list of samples in that group
     colors: dictionary: group to color
@@ -346,7 +333,7 @@ def plot_expression(output_filename,df_TPM,gene_name=None,gene_id=None,samples=N
         legend_elements.append(Line2D([0], [0], marker='o', color="w", label="other", markerfacecolor="black", markersize=15))
         ax.legend(handles=legend_elements, loc='upper left')
     
-    plt.savefig(output_filename,bbox_inches="tight",pad_inches=0.1,dpi=100)
+    plt.savefig(output_filename,bbox_inches="tight",pad_inches=0.1,dpi=image_dpi)
     plt.cla() 
     plt.clf() 
     plt.close('all')

@@ -23,6 +23,9 @@ class pyjacker:
         with open(config_file, 'r') as stream:
             data_yaml = yaml.safe_load(stream)
             self.output_dir = data_yaml["output_dir"]
+            if "image_format" in data_yaml: self.image_format=data_yaml["image_format"]
+            else: self.image_format="svg"
+            if "image_dpi" in data_yaml: self.image_dpi=data_yaml["image_dpi"]
             self.cache_dir = os.path.join( self.output_dir,"cache")
             os.makedirs( self.cache_dir,exist_ok=True)
 
@@ -31,8 +34,8 @@ class pyjacker:
 
             # Params
             self.weights = {"OHE":4.0,"ASE":2.0,"enhancers":1.0,"deletion":5}
-            if "weight_OHE" in data_yaml:  self.weights["OHE"] = float(data_yaml["weight_OHE"])
-            if "weight_ASE" in data_yaml:  self.weights["ASE"] = float(data_yaml["weight_ASE"])
+            if "weight_OHE" in data_yaml:  self.weights["OHE"] = float(data_yaml["weight_OHE"]) # outlier high expression
+            if "weight_ASE" in data_yaml:  self.weights["ASE"] = float(data_yaml["weight_ASE"]) # allele-specific expression
             if "weight_enhancers" in data_yaml:  self.weights["enhancers"] = float(data_yaml["weight_enhancers"])
             if "weight_deletion" in data_yaml:  self.weights["deletion"] = float(data_yaml["weight_deletion"])
 
@@ -170,7 +173,6 @@ class pyjacker:
         gene_lists = np.array_split(gene_list,self.n_threads)
 
         datas=[]
-        #self.df_TPM_normal = None
         for gl in gene_lists:
             data_dic = {"gene_list":gl,"breakpoints":self.breakpoints,"CNAs":self.CNAs,"genes":self.genes,"genes_index":self.genes_index,"chr_lengths":self.chr_lengths,
                           "df_TPM":self.df_TPM,"df_TPM_normal":self.df_TPM_normal,"df_fusions":self.df_fusions,"df_enhancers":self.df_enhancers,"samples":self.samples,
@@ -229,7 +231,7 @@ class pyjacker:
         os.makedirs(self.output_dir,exist_ok=True)
         df_result.to_csv(os.path.join(self.output_dir,"enhancer_hijacking.tsv"),index=False,sep="\t")
         generate_main_report(df_result,self.output_dir,300,filter_monoallelic=False)
-        generate_individual_reports(df_result,self.df_TPM,self.breakpoints,self.CNAs,self.genes,self.ase_dir,self.ase_dna_dir,self.gtf_file,self.output_dir,self.cytobands,n_events=100)
+        generate_individual_reports(df_result,self.df_TPM,self.breakpoints,self.CNAs,self.genes,self.ase_dir,self.ase_dna_dir,self.gtf_file,self.output_dir,self.cytobands,n_events=100,image_format=self.image_format,image_dpi=self.image_dpi)
         print("Pyjacker completed successfully! The results are stored in "+self.output_dir+".")
 
     def estimate_null_distribution(self,seed=0):
@@ -250,7 +252,6 @@ class pyjacker:
 
 
 def find_EH_genelist(data):
-
 
     l=[]
     for gene_id in data["gene_list"]:
@@ -280,15 +281,6 @@ def find_EH_genelist(data):
             candidate_samples = random.sample(reference_samples,n_candidates)
             for x in candidate_samples: reference_samples.remove(x)
             reference_samples = list(reference_samples) + list(previous_candidates) 
-
-        
-        # Exclude samples with monoallelic expression from the reference, provided there are enough reference samples without monoallelic expression.
-        #new_reference_samples = []
-        #for sample in reference_samples:
-        #    if data["df_ase"].loc[gene_id,sample]<=0:
-        #        new_reference_samples.append(sample)
-        #if len(new_reference_samples)>6:
-        #    reference_samples = new_reference_samples
         
         for sample in candidate_samples:
             n_std,ohe_score = compute_ohe_score(data["df_TPM"],gene_id,reference_samples,sample)
@@ -344,7 +336,7 @@ def compute_grouped_gene_scores(df_result):
             if max_score <=1: gene2score[gene_id] = max_score
             else:
                 gene2score[gene_id] = 5 * np.sum(scores) / (len(scores) +4) # Penalize by number of candidate samples.
-                #gene2score[gene_id] = 5 * np.sum(scores) / (len(gene2index[gene_id]) +4) # Penalize by number of samples with breakpoints nearby.
+               
         gene_scores=[]
         for x in df_result.index:
             gene_scores.append(gene2score[df_result.loc[x,"gene_id"]])
