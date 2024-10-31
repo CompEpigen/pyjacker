@@ -25,7 +25,8 @@ class pyjacker:
             self.output_dir = data_yaml["output_dir"]
             if "image_format" in data_yaml: self.image_format=data_yaml["image_format"]
             else: self.image_format="svg"
-            if "image_dpi" in data_yaml: self.image_dpi=data_yaml["image_dpi"]
+            if "image_dpi" in data_yaml: self.image_dpi= float(data_yaml["image_dpi"])
+            else: self.image_dpi=300
             self.cache_dir = os.path.join( self.output_dir,"cache")
             os.makedirs( self.cache_dir,exist_ok=True)
 
