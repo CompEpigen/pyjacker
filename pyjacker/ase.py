@@ -3,6 +3,8 @@ import numpy as np
 import pandas as pd
 from scipy.stats import betabinom
 import vcfpy
+from tqdm import tqdm
+import sys
 
 #from collections import namedtuple
 #SNP = namedtuple('SNP', 'id chr pos ref alt RO AD')
@@ -33,8 +35,7 @@ def compute_ase_matrix(samples,ase_dir,genes,genes_index=None,prior_coef=2.0,imp
     df.index = [genes[g].gene_id for g in genes]
     df.columns = samples
     if ase_dir is None: return df
-
-    for sample in samples:
+    for sample in tqdm(samples,file=sys.stdout):
         if CNAs is not None and sample in CNAs: CNAs_sample = CNAs[sample]
         else: CNAs_sample = {}
         ase_file=os.path.join(ase_dir,sample+".tsv")

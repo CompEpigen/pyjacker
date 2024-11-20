@@ -2,7 +2,10 @@
 # Output
 #############################################
 
-output_dir: "/omics/groups/OE0219/internal/Etienne/tools/pyjacker/results_AML"
+output_dir: "results_AML"
+n_reports: -1 # Number of top pyjacker hits for which pyjacker will generate a detailed report with figures. 
+              # if -1, will generate figures for all putative enhancer hijacking events.
+              # setting this to a lower value will reduce the runtime, since fewer (or even zero) figures will need to be generated.
 image_format: "svg" # Format of the images generated in the report. Can be svg, png or pdf
 image_dpi: 200 # Resolution of the images generated in the report, if the format is png
 
@@ -10,40 +13,40 @@ image_dpi: 200 # Resolution of the images generated in the report, if the format
 # Required inputs
 #############################################
 
-RNA_TPM_file: "/omics/groups/OE0219/internal/Etienne/tools/pyjacker/AML_data/AML_TPM.tsv"
-breakpoints: "/omics/groups/OE0219/internal/Etienne/tools/pyjacker/AML_data/breakpoints.tsv"
+RNA_TPM_file: "data/TPM_ckAML.tsv"
+breakpoints: "data/breakpoints.tsv"
 
-gtf: /omics/groups/OE0219/internal/Etienne/data/reference/Homo_sapiens.GRCh37.87.gtf.gz
-cytobands: "/omics/groups/OE0219/internal/Etienne/tools/pyjacker/data/cytobands_hg19.tsv"
+gtf: data/Homo_sapiens.GRCh37.75.gtf.gz
+cytobands: "data/hg19_cytobands.tsv"
 
 #############################################
 # Optional but strongly recommended inputs
 #############################################
 
 # Copy number alterations (used to correct for gene expression, and also add breakpoints if missed by the SV caller)
-CNAs: "/omics/groups/OE0219/internal/Etienne/tools/pyjacker/AML_data/CNAs.tsv"
+CNAs: "data/CNAs.tsv"
 
 # Directory containing the output of fast_ase (or GATK ASEReadcounter). This directory contains one tsv file per sample, called {sample}.tsv
-ase_dir: "/omics/groups/OE0219/internal/Etienne/tools/pyjacker/AML_data/ASE"
+ase_dir: "data/ASE"
 
 # Allele-specific expression will be ignored for imprinted genes, if they are provided.
-imprinted_genes_file: "/omics/groups/OE0219/internal/Etienne/tools/pyjacker/data/imprinted_genes.txt"
+imprinted_genes_file: "data/imprinted_genes.txt"
 
 # pyjacker looks for SVs in the same TAD as a gene (+ a margin). 
 # If not TADs are provided, it will look for SVs which are up to max_dist_bp2tss from the TSS.
-TADs_file: "/omics/groups/OE0219/internal/Etienne/tools/pyjacker/data/HSPC_TADs.bed"
+TADs_file: "data/HSPC_TADs.bed"
 #max_dist_bp2tss: 1500000 
 
 # Provide enhancers scored by ROSE, for the correct cell type.
 # This is optional, but if provided, it will be used to score the candidate enhancer hijacking events, in addition to outlier expression and allele-specific expression.
-enhancers: "/omics/groups/OE0219/internal/Etienne/tools/pyjacker/AML_data/enhancers_myeloid.tsv"
+enhancers: "data/enhancers_myeloid.tsv"
 
 ##############################################
 # Additional parameters
 #############################################
 
 # Provide fusion transcripts (used for annotating the results)
-fusions: "/omics/groups/OE0219/internal/Etienne/tools/pyjacker/AML_data/fusions.tsv"
+fusions: "data/fusions.tsv"
 
 # These weights influence the scoring of the candidate enhancer hijacking events, but their default values should work well.
 weight_OHE: 4 # weight for the outlier high expression score
@@ -53,7 +56,7 @@ weight_deletion: 5 # weight for the deletion (penalize if a gene is deleted in a
 
 # Number of times to iterate through all genes when generating the null distribution for the false discovery rate.
 # A smaller number of iterations is faster, but leads to an FDR which is not as precise.
-n_iterations_FDR: 50
+n_iterations_FDR: 1
 
 
 

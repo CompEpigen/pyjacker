@@ -1,6 +1,8 @@
 import sys
 import numpy as np
 import pandas as pd
+from tqdm import tqdm
+import sys
 
 from pyjacker.genes import read_genes_gtf
 
@@ -78,7 +80,7 @@ def correct_exp_cn(df_TPM,CNAs,genes=None,genome=None,gtf=None,chr_lengths=None)
     
     set_genes_TPM = set(df_TPM.index)
     
-    for sample in df_TPM.columns:
+    for sample in tqdm(df_TPM.columns,file=sys.stdout):
         if chr_lengths is not None: ploidy = compute_ploidy(sample,CNAs,chr_lengths)
         else: ploidy=2
         amplified_genes = find_amplified_genes(CNAs,genes,sample,set_genes_TPM)

@@ -4,9 +4,10 @@ import random
 from statsmodels.stats.multitest import multipletests
 import os
 import sys
-import pickle
 import yaml
 import multiprocessing
+from tqdm import tqdm
+import argparse
 
 from pyjacker.genes import read_genes_gtf, index_genes_by_pos
 from pyjacker.ase import compute_ase_matrix, count_SNPs_gene_sample
@@ -20,9 +21,14 @@ chromosomes = [str(x) for x in range(1,23)] + ["X"]
 
 class pyjacker:
     def __init__(self,config_file):
+        if not os.path.exists(config_file): sys.exit("The config file does not exist: "+str(config_file))
         with open(config_file, 'r') as stream:
-            data_yaml = yaml.safe_load(stream)
+            try:
+                data_yaml = yaml.safe_load(stream)
+            except: sys.exit("Could not load the config file: {}. Please make sure that it is in valide yaml format.".format(config_file))
             self.output_dir = data_yaml["output_dir"]
+            if "n_reports" in data_yaml: self.n_reports= int(data_yaml["n_reports"])
+            else: self.n_reports=-1
             if "image_format" in data_yaml: self.image_format=data_yaml["image_format"]
             else: self.image_format="svg"
             if "image_dpi" in data_yaml: self.image_dpi= float(data_yaml["image_dpi"])
@@ -102,6 +108,9 @@ class pyjacker:
                 for x in self.df_breakpoints.index:
                     if self.df_breakpoints.loc[x,"sample"] in self.samples: selected_indices.append(x)
                 self.df_breakpoints = self.df_breakpoints.loc[selected_indices,:].reset_index(drop=True)
+
+            print("Running pyjacker on {} samples.".format(len(self.samples)))
+
             # CNAs
             if "CNAs" in data_yaml:
                 df_CNAs = pd.read_csv(data_yaml["CNAs"],sep="\t",dtype={"chr":str})
@@ -111,10 +120,13 @@ class pyjacker:
                 if os.path.exists(TPM_corrected_file):
                     self.df_TPM = pd.read_csv(TPM_corrected_file,sep="\t",index_col=0)
                 else:
+                    print("Computing gene expression values corrected for copy number...")
                     self.df_TPM = correct_exp_cn(self.df_TPM,self.CNAs,self.genes,chr_lengths=self.chr_lengths)
                     self.df_TPM.to_csv(TPM_corrected_file,sep="\t")
             else: self.CNAs = None
             self.breakpoints = read_breakpoints(self.df_breakpoints)
+
+            
 
             # Allele specific expression
             if "ase_dir" in data_yaml:
@@ -130,6 +142,7 @@ class pyjacker:
             if os.path.exists(cache_ase_file):
                 self.df_ase = pd.read_csv((cache_ase_file),sep="\t",index_col=0)
             else:
+                print("Computing allele-specific expression scores...")
                 imprinted_genes_file = None
                 if "imprinted_genes_file" in data_yaml:
                     imprinted_genes_file = data_yaml["imprinted_genes_file"]
@@ -218,8 +231,6 @@ class pyjacker:
             else:
                 df_result["pval"] = [compute_empirical_pval(score,null_distribution) for score in df_result["score"]]
                 df_result["FDR"] = multipletests(df_result["pval"],alpha=0.05,method="fdr_bh")[1]
-        else:
-            df_result = df_result.loc[df_result["score"]>-5,:]
 
         df_result = df_result.loc[df_result["score"]>0,:]
         df_result = df_result.reset_index(drop=True) 
@@ -232,15 +243,18 @@ class pyjacker:
         os.makedirs(self.output_dir,exist_ok=True)
         df_result.to_csv(os.path.join(self.output_dir,"enhancer_hijacking.tsv"),index=False,sep="\t")
         generate_main_report(df_result,self.output_dir,300,filter_monoallelic=False)
-        generate_individual_reports(df_result,self.df_TPM,self.breakpoints,self.CNAs,self.genes,self.ase_dir,self.ase_dna_dir,self.gtf_file,self.output_dir,self.cytobands,n_events=100,image_format=self.image_format,image_dpi=self.image_dpi)
+        print("Finished searching for putative enhancer hijacking events. Found {} events with FDR<=20%.".format(np.sum(df_result["FDR"]<=0.20)))
+        if self.n_reports!=0:
+            print("Generating reports...")
+            generate_individual_reports(df_result,self.df_TPM,self.breakpoints,self.CNAs,self.genes,self.ase_dir,self.ase_dna_dir,self.gtf_file,self.output_dir,self.cytobands,n_events=self.n_reports,image_format=self.image_format,image_dpi=self.image_dpi)
         print("Pyjacker completed successfully! The results are stored in "+self.output_dir+".")
 
     def estimate_null_distribution(self,seed=0):
+        print("Estimating the null distribution of pyjacker scores in the absence of enhancer hijacking...")
         if self.n_iterations_FDR==0: return None
         random.seed(seed)
         scores=[]
-        for i in range(self.n_iterations_FDR):
-            print("Estimating null distribution "+str(i+1)+"/"+str(self.n_iterations_FDR))
+        for i in tqdm(range(self.n_iterations_FDR),file=sys.stdout):
             df_result = self.find_EH(random_candidates=True)
             if self.group_by_gene:
                 df_result = compute_grouped_gene_scores(df_result)
@@ -354,8 +368,11 @@ def get_unique_gene_scores(df_result):
     return gene_ids,gene_scores
 
 def main():
-    if len(sys.argv)<2: sys.exit("Please provide a config file (eg: pyjacker config.yaml).")
-    pyjack = pyjacker(sys.argv[1])
+    parser = argparse.ArgumentParser(prog='pyjacker', description='Tool for the detection of enhancer hijacking using WGS and RNAseq. Please check the documentation at https://github.com/CompEpigen/pyjacker for a description of the config file that must be provided as input.')
+    parser.add_argument('config_file') 
+    args = parser.parse_args()
+    pyjack = pyjacker(args.config_file)
+    print("Detecting putative enhancer hijacking events...")
     df_result=pyjack.find_EH(random_candidates=False)
     null_distribution = pyjack.estimate_null_distribution()
     pyjack.save_results(df_result,null_distribution=null_distribution)

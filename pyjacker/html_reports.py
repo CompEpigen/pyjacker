@@ -5,6 +5,8 @@ matplotlib.use('agg')
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 import os 
+from tqdm import tqdm
+import sys
 
 #from plot import plot_WGS
 from figeno import figeno_make
@@ -89,22 +91,17 @@ def write_SNPs(sample,gene,ase_dir,outfile):
 
 
 
-def generate_individual_reports(df_result,df_TPM,breakpoints,CNAs,genes,ase_dir,ase_dna_dir,gtf_file,outdir,cytobands,df_TPM_normal=None,n_events=200,image_format="png",image_dpi=200):
+def generate_individual_reports(df_result,df_TPM,breakpoints,CNAs,genes,ase_dir,ase_dna_dir,gtf_file,outdir,cytobands,df_TPM_normal=None,n_events=-1,image_format="png",image_dpi=200):
     df_result = df_result.copy(deep=True)
     df_result = df_result.loc[df_result["score"]>=0,:].reset_index(drop=True)
     os.makedirs(os.path.join(outdir,"Data/html"), exist_ok=True)
     os.makedirs(os.path.join(outdir,"Data/Figures/Expression/"), exist_ok=True)
     os.makedirs(os.path.join(outdir,"Data/Figures/chr_plots"), exist_ok=True)
     os.makedirs(os.path.join(outdir,"Data/Figures/ASE/"), exist_ok=True)
-    n=0
-    if "FDR" in df_result.columns:
-        while  n<df_result.shape[0] and df_result.loc[n,"FDR"]<0.3:
-            n+=1
-    else:
-        while  n<df_result.shape[0] and df_result.loc[n,"score"]>3:
-            n+=1
-    n_events = max(n_events,n)
-    for i in range(min(df_result.shape[0],n_events)): #range(df_result.shape[0])
+
+    if n_events<0: n_events=df_result.shape[0]
+    else: n_events=min(df_result.shape[0],n_events)
+    for i in tqdm(range(n_events),file=sys.stdout): 
         sample = df_result.loc[i,"sample"]
         gene_name = df_result.loc[i,"gene_name"]
         gene_full = genes[df_result.loc[i,"gene_id"]]

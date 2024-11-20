@@ -7,7 +7,7 @@ packages = ["pyjacker"]
 
 [project]
 name = 'pyjacker'
-version = "1.0.2"
+version = "1.1.0"
 description = 'Enhancer hijacking detection from WGS and RNAseq.'
 readme = 'README.md'
 authors = [
@@ -27,7 +27,8 @@ dependencies = [
   "statsmodels>=0.13.5",
   "pyyaml>=6.0",
   "matplotlib>=3.4.3",
-  "figeno>=1.6.0"
+  "tqdm>=4.66.0",
+  "figeno>=1.6.4"
 ]
 
 [project.scripts]
