@@ -15,6 +15,7 @@ def read_genes_gtf(gtf_path):
         start = int(linesplit[3])
         end = int(linesplit[4])
         strand = linesplit[6]
+        gene_biotype=""
         for x in linesplit[8].split(";"):
             if "gene_id" in x:
                 gene_id = x[x.find("\"")+1:-1]

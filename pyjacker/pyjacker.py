@@ -11,13 +11,11 @@ import argparse
 
 from pyjacker.genes import read_genes_gtf, index_genes_by_pos
 from pyjacker.ase import compute_ase_matrix, count_SNPs_gene_sample
-from pyjacker.outlier_expression import penalty_gene_expressed_normal, compute_ohe_score, find_outlier_samples
-from pyjacker.cna import read_CNAs, add_cna_breakpoints, correct_exp_cn, compute_penalty_amplification, gene_is_deleted, compute_penalty_deletion
+from pyjacker.outlier_expression import compute_ohe_score
+from pyjacker.cna import read_CNAs, add_cna_breakpoints, correct_exp_cn, gene_is_deleted
 from pyjacker.breakpoints import read_breakpoints, read_TADs, find_samples_with_breakpoints_near_gene, find_distance_breakpoint, find_fusion, find_enhancers_orientation
 from pyjacker.html_reports import generate_main_report, generate_individual_reports
 
-
-chromosomes = [str(x) for x in range(1,23)] + ["X"]
 
 class pyjacker:
     def __init__(self,config_file):
@@ -50,6 +48,8 @@ class pyjacker:
             if "gtf" in data_yaml:
                 self.gtf_file = data_yaml["gtf"]
                 self.genes = read_genes_gtf(self.gtf_file)
+                self.genes={gene_id:gene for (gene_id,gene) in self.genes.items() 
+                            if (gene.biotype in ["protein_coding",""] and gene.chr in [str(x) for x in range(1,23)] + ["X"])}
                 self.genes_index = index_genes_by_pos(self.genes)
             else:
                 sys.exit("Missing gtf file")
@@ -84,11 +84,7 @@ class pyjacker:
                 if "gene_name" in self.df_TPM.columns:
                     self.df_TPM.drop("gene_name",axis=1,inplace=True)
                 self.samples = list(self.df_TPM.columns)
-                tmp_list = list(self.genes)
-                for gene_id in tmp_list:
-                    if not gene_id in self.df_TPM.index: 
-                        tmp = self.genes.pop(gene_id)
-                        
+                self.genes={gene_id:gene for (gene_id,gene) in self.genes.items() if gene_id in self.df_TPM.index}   
             else:
                 sys.exit("Missing RNA_TPM_file from the config file.")
 
@@ -109,7 +105,10 @@ class pyjacker:
                     if self.df_breakpoints.loc[x,"sample"] in self.samples: selected_indices.append(x)
                 self.df_breakpoints = self.df_breakpoints.loc[selected_indices,:].reset_index(drop=True)
 
+            if len(self.samples)<3: sys.exit("Error: Insufficient number of samples in the RNA TPM file. Pyjacker is designed to run with at least 10 samples, and cannot be run with fewer than 3.")
             print("Running pyjacker on {} samples.".format(len(self.samples)))
+            if len(self.samples)<10:
+                print("WARNING: pyjacker is designed to run with at least 10 samples.")
 
             # CNAs
             if "CNAs" in data_yaml:
@@ -123,10 +122,17 @@ class pyjacker:
                     print("Computing gene expression values corrected for copy number...")
                     self.df_TPM = correct_exp_cn(self.df_TPM,self.CNAs,self.genes,chr_lengths=self.chr_lengths)
                     self.df_TPM.to_csv(TPM_corrected_file,sep="\t")
+                
             else: self.CNAs = None
             self.breakpoints = read_breakpoints(self.df_breakpoints)
 
-            
+            # Filter genes: the gene must be expressed in at least one sample.
+            # Also require at least 30% of samples to have expression lower than max/10. 
+            # This reduces the number of tests.
+            self.genes={gene_id:gene for (gene_id,gene) in self.genes.items() 
+                        if (np.sum(self.df_TPM.loc[gene_id,:])>=1
+                            and np.percentile(self.df_TPM.loc[gene_id,:],30)<=np.max(self.df_TPM.loc[gene_id,:])*0.1)}   
+            self.gene_list = [self.genes[x] for x in self.genes]
 
             # Allele specific expression
             if "ase_dir" in data_yaml:
@@ -177,25 +183,33 @@ class pyjacker:
 
 
     def find_EH(self,random_candidates=False):
-        gene_list = []
-        for gene_id in self.genes:
-            gene = self.genes[gene_id]
-            if np.sum(self.df_TPM.loc[gene_id,:])<1: continue
-            if gene.biotype != "protein_coding": continue
-            if gene.chr in ["Y","MT"]: continue
-            gene_list.append(gene_id)
-        gene_lists = np.array_split(gene_list,self.n_threads)
+        """
+        Find putative enhancer hijacking events, and score them.
+        If random_candidates is true, samples with rearrangements will be randomly selected for each gene, in order to estimate a null distribution.
+        This is parallelized over genes.
+        """
 
-        datas=[]
-        for gl in gene_lists:
-            data_dic = {"gene_list":gl,"breakpoints":self.breakpoints,"CNAs":self.CNAs,"genes":self.genes,"genes_index":self.genes_index,"chr_lengths":self.chr_lengths,
+        # Data that is copied for each process.
+        data_dic={"breakpoints":self.breakpoints,"CNAs":self.CNAs,"genes":self.genes,"genes_index":self.genes_index,"chr_lengths":self.chr_lengths,
                           "df_TPM":self.df_TPM,"df_TPM_normal":self.df_TPM_normal,"df_fusions":self.df_fusions,"df_enhancers":self.df_enhancers,"samples":self.samples,
                           "df_ase":self.df_ase,"ase_dir":self.ase_dir,"TADs":self.TADs,"max_dist_bp2tss":self.max_dist_bp2tss,"weights":self.weights,
                           "random_candidates": random_candidates}
-        
-            datas.append(data_dic)
-        with multiprocessing.Pool(self.n_threads) as pool:
-            results = pool.map(find_EH_genelist,datas)
+
+        #datas=[]
+        #for gl in gene_lists:
+        #    data_dic = {"gene_list":gl,"breakpoints":self.breakpoints,"CNAs":self.CNAs,"genes":self.genes,"genes_index":self.genes_index,"chr_lengths":self.chr_lengths,
+        #                  "df_TPM":self.df_TPM,"df_TPM_normal":self.df_TPM_normal,"df_fusions":self.df_fusions,"df_enhancers":self.df_enhancers,"samples":self.samples,
+        #                  "df_ase":self.df_ase,"ase_dir":self.ase_dir,"TADs":self.TADs,"max_dist_bp2tss":self.max_dist_bp2tss,"weights":self.weights,
+        #                  "random_candidates": random_candidates}
+        #
+        #    datas.append(data_dic)
+
+        # Multiprocessing
+        def init_worker():
+            global data
+            data = data_dic
+        with multiprocessing.Pool(self.n_threads, initializer=init_worker) as pool:
+            results = list(tqdm(pool.imap(find_EH_gene,self.gene_list),total=len(self.gene_list),disable=random_candidates,file=sys.stdout))
 
         results_flattened = [x for y in results for x in y]
 
@@ -246,7 +260,9 @@ class pyjacker:
         print("Finished searching for putative enhancer hijacking events. Found {} events with FDR<=20%.".format(np.sum(df_result["FDR"]<=0.20)))
         if self.n_reports!=0:
             print("Generating reports...")
-            generate_individual_reports(df_result,self.df_TPM,self.breakpoints,self.CNAs,self.genes,self.ase_dir,self.ase_dna_dir,self.gtf_file,self.output_dir,self.cytobands,n_events=self.n_reports,image_format=self.image_format,image_dpi=self.image_dpi)
+            generate_individual_reports(df_result,self.df_TPM,self.breakpoints,self.CNAs,self.genes,self.ase_dir,self.ase_dna_dir,
+                                        self.gtf_file,self.output_dir,self.cytobands,n_events=self.n_reports,
+                                        image_format=self.image_format,image_dpi=self.image_dpi,n_threads=self.n_threads)
         print("Pyjacker completed successfully! The results are stored in "+self.output_dir+".")
 
     def estimate_null_distribution(self,seed=0):
@@ -263,71 +279,61 @@ class pyjacker:
                 scores+= list(df_result["score"])
         return sorted(scores)
 
-
-
-
-def find_EH_genelist(data):
+def find_EH_gene(gene):
 
     l=[]
-    for gene_id in data["gene_list"]:
-        gene = data["genes"][gene_id]
-        if np.max(data["df_TPM"].loc[gene_id,:])<1: continue # Require at least one sample which expresses the gene.
-        if np.percentile(data["df_TPM"].loc[gene_id,:],30)>np.max(data["df_TPM"].loc[gene_id,:])*0.1: continue # Require at least 30% of samples to have expression lower than max/10. This reduces the number of tests.
-        if gene.biotype != "protein_coding": continue
-        #if gene.chr in ["Y","MT"]: continue
-        if not gene.chr in [str(x) for x in range(1,23)] + ["X"]: continue
 
-        # Identify candidate samples (near breakpoints) and reference samples (others)
-        candidate_samples = find_samples_with_breakpoints_near_gene(data["samples"],data["genes"][gene_id],data["breakpoints"],data["TADs"],data["max_dist_bp2tss"])
-        reference_samples = []
-        for sample in data["samples"]:
-            if (not sample in candidate_samples):
-                reference_samples.append(sample)
+    # Identify candidate samples (near breakpoints) and reference samples (others)
+    candidate_samples = find_samples_with_breakpoints_near_gene(data["samples"],data["genes"][gene.gene_id],data["breakpoints"],data["TADs"],data["max_dist_bp2tss"])
+    reference_samples = []
+    for sample in data["samples"]:
+        if (not sample in candidate_samples):
+            reference_samples.append(sample)
 
-        # For estimating the null distribution: select some candidates among the reference samples, and remove them from the reference.
-        # That way, all "candidate" samples should not be true enhancer hijacking events, so we can estimate the null distribution.
-        if data["random_candidates"]:
-            if len(data["samples"])>10:
-                n_candidates = min(random.randint(1,3),len(reference_samples)-8)
-            else:
-                n_candidates = min(random.randint(1,3),len(reference_samples)-4)
-            if n_candidates<=0: continue
-            previous_candidates = candidate_samples
-            candidate_samples = random.sample(reference_samples,n_candidates)
-            for x in candidate_samples: reference_samples.remove(x)
-            reference_samples = list(reference_samples) + list(previous_candidates) 
-        
-        for sample in candidate_samples:
-            n_std,ohe_score = compute_ohe_score(data["df_TPM"],gene_id,reference_samples,sample)
-            d={}
-            d["gene_id"]=gene_id
-            d["gene_name"]=gene.gene_name
-            d["chr"]=gene.chr
-            d["start"]=gene.start
-            d["end"]=gene.end
-            d["sample"]=sample
-            d["distance_to_breakpoint"]=find_distance_breakpoint(data["breakpoints"],sample,gene)
-            d["n_SNPs"]=count_SNPs_gene_sample(data["ase_dir"],sample,data["genes"][gene_id])
-            d["fusion"]=find_fusion(data["breakpoints"],data["genes_index"],sample,gene,df_fusions=data["df_fusions"])
-            if data["df_enhancers"] is not None:
-                d["enhancers"],d["super_enhancers"],enhancer_score = find_enhancers_orientation(data["breakpoints"],data["TADs"],data["df_enhancers"],sample,gene)
-            else: d["enhancers"],d["super_enhancers"],enhancer_score="","",0
+    # For estimating the null distribution: select some candidates among the reference samples, and remove them from the reference.
+    # That way, all "candidate" samples should not be true enhancer hijacking events, so we can estimate the null distribution.
+    if data["random_candidates"]:
+        if len(data["samples"])>10:
+            n_candidates = min(random.randint(1,3),len(reference_samples)-8)
+        else:
+            n_candidates = min(random.randint(1,3),len(reference_samples)-4)
+        if n_candidates<=0: return []
+        previous_candidates = candidate_samples
+        candidate_samples = random.sample(reference_samples,n_candidates)
+        for x in candidate_samples: reference_samples.remove(x)
+        reference_samples = list(reference_samples) + list(previous_candidates) 
+    
+    for sample in candidate_samples:
+        n_std,ohe_score = compute_ohe_score(data["df_TPM"],gene.gene_id,reference_samples,sample)
+        d={}
+        d["gene_id"]=gene.gene_id
+        d["gene_name"]=gene.gene_name
+        d["chr"]=gene.chr
+        d["start"]=gene.start
+        d["end"]=gene.end
+        d["sample"]=sample
+        d["distance_to_breakpoint"]=find_distance_breakpoint(data["breakpoints"],sample,gene)
+        d["n_SNPs"]=count_SNPs_gene_sample(data["ase_dir"],sample,data["genes"][gene.gene_id])
+        d["fusion"]=find_fusion(data["breakpoints"],data["genes_index"],sample,gene,df_fusions=data["df_fusions"])
+        if data["df_enhancers"] is not None:
+            d["enhancers"],d["super_enhancers"],enhancer_score = find_enhancers_orientation(data["breakpoints"],data["TADs"],data["df_enhancers"],sample,gene)
+        else: d["enhancers"],d["super_enhancers"],enhancer_score="","",0
 
 
-            # Score 
-            OHE_score = data["weights"]["OHE"]*ohe_score
-            d["OHE_score"]=OHE_score
-            d["n_std"]=n_std
-            ASE_score = data["weights"]["ASE"] * data["df_ase"].loc[gene_id,sample]
-            d["ASE_score"]=ASE_score
-            enhancer_score=data["weights"]["enhancers"]* (enhancer_score)
-            d["enhancer_score"] = enhancer_score
-            penalty_deletion = - data["weights"]["deletion"] * gene_is_deleted(data["CNAs"],sample,data["genes"][gene_id])
-            d["penalty_deletion"]=penalty_deletion
+        # Score 
+        OHE_score = data["weights"]["OHE"]*ohe_score
+        d["OHE_score"]=OHE_score
+        d["n_std"]=n_std
+        ASE_score = data["weights"]["ASE"] * data["df_ase"].loc[gene.gene_id,sample]
+        d["ASE_score"]=ASE_score
+        enhancer_score=data["weights"]["enhancers"]* (enhancer_score)
+        d["enhancer_score"] = enhancer_score
+        penalty_deletion = - data["weights"]["deletion"] * gene_is_deleted(data["CNAs"],sample,data["genes"][gene.gene_id])
+        d["penalty_deletion"]=penalty_deletion
 
-            score = OHE_score + ASE_score + enhancer_score + penalty_deletion
-            d["score"]=score
-            l.append(d)
+        score = OHE_score + ASE_score + enhancer_score + penalty_deletion
+        d["score"]=score
+        l.append(d)
     return l
 
 def compute_grouped_gene_scores(df_result):
@@ -372,7 +378,7 @@ def main():
     parser.add_argument('config_file') 
     args = parser.parse_args()
     pyjack = pyjacker(args.config_file)
-    print("Detecting putative enhancer hijacking events...")
+    print("Searching for enhancer hijacking events...")
     df_result=pyjack.find_EH(random_candidates=False)
     null_distribution = pyjack.estimate_null_distribution()
     pyjack.save_results(df_result,null_distribution=null_distribution)
