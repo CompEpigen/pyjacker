@@ -14,39 +14,39 @@ image_dpi: 200 # Resolution of the images generated in the report, if the format
 #############################################
 
 RNA_TPM_file: "data/TPM_ckAML.tsv"
-breakpoints: "data/breakpoints.tsv"
+breakpoints: "data/breakpoints_ckAML.tsv"
 
 gtf: data/Homo_sapiens.GRCh37.75.gtf.gz
-cytobands: "data/hg19_cytobands.tsv"
+cytobands: "data/cytobands_hg19.tsv"
 
 #############################################
 # Optional but strongly recommended inputs
 #############################################
 
 # Copy number alterations (used to correct for gene expression, and also add breakpoints if missed by the SV caller)
-CNAs: "data/CNAs.tsv"
+CNAs: "data/CNAs_ckAML.tsv"
 
 # Directory containing the output of fast_ase (or GATK ASEReadcounter). This directory contains one tsv file per sample, called {sample}.tsv
-ase_dir: "data/ASE"
+ase_dir: "data/ASE_ckAML"
 
 # Allele-specific expression will be ignored for imprinted genes, if they are provided.
 imprinted_genes_file: "data/imprinted_genes.txt"
 
 # pyjacker looks for SVs in the same TAD as a gene (+ a margin). 
 # If not TADs are provided, it will look for SVs which are up to max_dist_bp2tss from the TSS.
-TADs_file: "data/HSPC_TADs.bed"
+TADs_file: "data/TADs_HSPC_hg19.bed"
 #max_dist_bp2tss: 1500000 
 
 # Provide enhancers scored by ROSE, for the correct cell type.
 # This is optional, but if provided, it will be used to score the candidate enhancer hijacking events, in addition to outlier expression and allele-specific expression.
-enhancers: "data/enhancers_myeloid.tsv"
+enhancers: "data/enhancers_myeloid_hg19.tsv"
 
 ##############################################
 # Additional parameters
-#############################################
+##############################################
 
 # Provide fusion transcripts (used for annotating the results)
-fusions: "data/fusions.tsv"
+fusions: "data/fusions_ckAML.tsv"
 
 # These weights influence the scoring of the candidate enhancer hijacking events, but their default values should work well.
 weight_OHE: 4 # weight for the outlier high expression score
@@ -56,7 +56,9 @@ weight_deletion: 5 # weight for the deletion (penalize if a gene is deleted in a
 
 # Number of times to iterate through all genes when generating the null distribution for the false discovery rate.
 # A smaller number of iterations is faster, but leads to an FDR which is not as precise.
-n_iterations_FDR: 1
+n_iterations_FDR: 50
+
+n_threads: 6 # Number of threads to use 
 
 
 
