@@ -1,4 +1,5 @@
 # pyjacker
+[![DOI](https://zenodo.org/badge/641412900.svg)](https://doi.org/10.5281/zenodo.14227955)
 
 This is a tool to detect enhancer hijacking events in a cohort of at least 10 samples profiled with WGS and RNA-seq. It does not require matched normals and can detect enhancer hijacking events occurring in only a single sample. Briefly, it looks for outlier high and monoallelic expression of a gene in a sample which has a breakpoint close to the gene.
 
