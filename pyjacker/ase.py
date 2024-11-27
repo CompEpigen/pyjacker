@@ -55,6 +55,7 @@ def compute_ase_matrix(samples,ase_dir,genes,genes_index=None,prior_coef=2.0,imp
 
             llr = llr_betabinom(df_sample.loc[x,"altCount"], df_sample.loc[x,"altCount"]+df_sample.loc[x,"refCount"])
             for g in genes_at_locus(genes_index,df_sample.loc[x,"contig"].lstrip("chr"),int(df_sample.loc[x,"position"])):
+                if not g.gene_id in genes: continue
                 if not g.gene_id in geneIDs2llrs: geneIDs2llrs[g.gene_id]=[]
                 geneIDs2llrs[g.gene_id].append(llr)
         for gene_id in geneIDs2llrs:
