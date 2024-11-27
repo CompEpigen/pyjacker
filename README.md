@@ -13,7 +13,7 @@ The config file indicates all the parameters, including paths to the input files
 ### Docker
 Alternatively, pyjacker can be run using a docker image.
 ```
-docker run -t -v `pwd`:`pwd` esollier/pyjacker:latest pyjacker config.yaml
+docker run -t -w `pwd` -v `pwd`:`pwd` esollier/pyjacker:latest pyjacker config.yaml
 ```
 
 ## Inputs
