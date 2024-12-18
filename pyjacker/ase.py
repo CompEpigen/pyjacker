@@ -22,7 +22,8 @@ def compute_ase_matrix(samples,ase_dir,genes,genes_index=None,prior_coef=2.0,imp
         genes: directory of gene IDs to genes (gene_id,gene_name,chr,start,end,strand)
         imprinted_genes_file: text file where each line is the name of an imprinted gene. Imprinted genes will be ignored.
     Output:
-        dataframe of gene_ids by samples giving the ASE score of each pair (gene_id,sample).
+        df: dataframe of gene_ids by samples giving the ASE score of each pair (gene_id,sample).
+        df_n_SNPs: dataframe of gene_ids by samples giving the number of SNPs in each gene for each sample.
     """
     if genes_index is None: genes_index = index_genes_by_pos(genes)
     imprinted_genes = []
@@ -34,11 +35,17 @@ def compute_ase_matrix(samples,ase_dir,genes,genes_index=None,prior_coef=2.0,imp
     df = pd.DataFrame(np.zeros((len(genes),len(samples))))
     df.index = [genes[g].gene_id for g in genes]
     df.columns = samples
+    df_n_SNPs = pd.DataFrame(np.zeros((len(genes),len(samples)),dtype=int))
+    df_n_SNPs.index = [genes[g].gene_id for g in genes]
+    df_n_SNPs.columns = samples
     if ase_dir is None: return df
     for sample in tqdm(samples,file=sys.stdout):
         if CNAs is not None and sample in CNAs: CNAs_sample = CNAs[sample]
         else: CNAs_sample = {}
         ase_file=os.path.join(ase_dir,sample+".tsv")
+        if not os.path.isfile(ase_file):
+            tqdm.write("WARNING: No allele-specific expression file found for sample "+sample+" (expected: "+ase_file+")")
+            continue
         geneIDs2llrs={}
         df_sample = pd.read_csv(ase_file,sep="\t",dtype={"contig":str})
         df_sample["contig"] = [x.lstrip("chr") for x in df_sample["contig"]]
@@ -58,11 +65,12 @@ def compute_ase_matrix(samples,ase_dir,genes,genes_index=None,prior_coef=2.0,imp
                 if not g.gene_id in genes: continue
                 if not g.gene_id in geneIDs2llrs: geneIDs2llrs[g.gene_id]=[]
                 geneIDs2llrs[g.gene_id].append(llr)
+                df_n_SNPs.loc[g.gene_id,sample]+=1
         for gene_id in geneIDs2llrs:
             if (not genes[gene_id].gene_name in imprinted_genes) and (not genes[gene_id].gene_name in ["KCNJ12"]): 
                 if genes[gene_id].chr!="Y" and (genes[gene_id].chr!="X" or genes[gene_id].start<2700000): # Exclude chrY and chrX, except the PAR.
                     df.loc[gene_id,sample] = compute_ase_score_from_llrs(geneIDs2llrs[gene_id])
-    return df
+    return df, df_n_SNPs
 
 
 def llr_betabinom(k,n,alpha=10,beta=10):
@@ -78,6 +86,7 @@ def compute_ase_score_from_llrs(llrs,prior_coef=2.0):
     return np.sum(llrs) / (len(llrs) + prior_coef)
 
 
+"""
 def count_SNPs_gene_sample(ase_dir,sample,gene=None):
     if ase_dir is None: return 0
     chr = gene.chr
@@ -88,3 +97,4 @@ def count_SNPs_gene_sample(ase_dir,sample,gene=None):
     df = df.loc[df["contig"]==chr]
     df = df.loc[(df["position"]>=start) & (df["position"]<=end)]
     return df.shape[0]
+"""

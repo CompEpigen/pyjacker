@@ -10,7 +10,7 @@ from tqdm import tqdm
 import argparse
 
 from pyjacker.genes import read_genes_gtf, index_genes_by_pos
-from pyjacker.ase import compute_ase_matrix, count_SNPs_gene_sample
+from pyjacker.ase import compute_ase_matrix
 from pyjacker.outlier_expression import compute_ohe_score
 from pyjacker.cna import read_CNAs, add_cna_breakpoints, correct_exp_cn, gene_is_deleted
 from pyjacker.breakpoints import read_breakpoints, read_TADs, find_samples_with_breakpoints_near_gene, find_distance_breakpoint, find_fusion, find_enhancers_orientation
@@ -139,21 +139,24 @@ class pyjacker:
                 self.ase_dir = data_yaml["ase_dir"]
             else:
                 self.ase_dir = None
-                print("WARN: ase_dir was not provided, so allele-specific expression will not be used.")
+                print("WARNING: ase_dir was not provided, so allele-specific expression will not be used.")
             if "ase_dna_dir" in data_yaml:
                 self.ase_dna_dir = data_yaml["ase_dna_dir"]
             else:
                 self.ase_dna_dir = None
             cache_ase_file = os.path.join(self.cache_dir,"ase.tsv")
-            if os.path.exists(cache_ase_file):
+            cache_SNPs_file = os.path.join(self.cache_dir,"SNPs.tsv")
+            if os.path.exists(cache_ase_file) and os.path.exists(cache_SNPs_file):
                 self.df_ase = pd.read_csv((cache_ase_file),sep="\t",index_col=0)
+                self.df_n_SNPs=pd.read_csv((cache_SNPs_file),sep="\t",index_col=0)
             else:
                 print("Computing allele-specific expression scores...")
                 imprinted_genes_file = None
                 if "imprinted_genes_file" in data_yaml:
                     imprinted_genes_file = data_yaml["imprinted_genes_file"]
-                self.df_ase = compute_ase_matrix(self.samples,self.ase_dir,self.genes,self.genes_index,imprinted_genes_file=imprinted_genes_file,CNAs=self.CNAs)
+                self.df_ase, self.df_n_SNPs = compute_ase_matrix(self.samples,self.ase_dir,self.genes,self.genes_index,imprinted_genes_file=imprinted_genes_file,CNAs=self.CNAs)
                 self.df_ase.to_csv(cache_ase_file,sep="\t")
+                self.df_n_SNPs.to_csv(cache_SNPs_file,sep="\t")
 
             # Fusion transcripts
             if "fusions" in data_yaml:
@@ -192,17 +195,8 @@ class pyjacker:
         # Data that is copied for each process.
         data_dic={"breakpoints":self.breakpoints,"CNAs":self.CNAs,"genes":self.genes,"genes_index":self.genes_index,"chr_lengths":self.chr_lengths,
                           "df_TPM":self.df_TPM,"df_TPM_normal":self.df_TPM_normal,"df_fusions":self.df_fusions,"df_enhancers":self.df_enhancers,"samples":self.samples,
-                          "df_ase":self.df_ase,"ase_dir":self.ase_dir,"TADs":self.TADs,"max_dist_bp2tss":self.max_dist_bp2tss,"weights":self.weights,
+                          "df_ase":self.df_ase,"df_n_SNPs":self.df_n_SNPs,"ase_dir":self.ase_dir,"TADs":self.TADs,"max_dist_bp2tss":self.max_dist_bp2tss,"weights":self.weights,
                           "random_candidates": random_candidates}
-
-        #datas=[]
-        #for gl in gene_lists:
-        #    data_dic = {"gene_list":gl,"breakpoints":self.breakpoints,"CNAs":self.CNAs,"genes":self.genes,"genes_index":self.genes_index,"chr_lengths":self.chr_lengths,
-        #                  "df_TPM":self.df_TPM,"df_TPM_normal":self.df_TPM_normal,"df_fusions":self.df_fusions,"df_enhancers":self.df_enhancers,"samples":self.samples,
-        #                  "df_ase":self.df_ase,"ase_dir":self.ase_dir,"TADs":self.TADs,"max_dist_bp2tss":self.max_dist_bp2tss,"weights":self.weights,
-        #                  "random_candidates": random_candidates}
-        #
-        #    datas.append(data_dic)
 
         # Multiprocessing
         def init_worker():
@@ -304,7 +298,6 @@ def find_EH_gene(gene):
         reference_samples = list(reference_samples) + list(previous_candidates) 
     
     for sample in candidate_samples:
-        n_std,ohe_score = compute_ohe_score(data["df_TPM"],gene.gene_id,reference_samples,sample)
         d={}
         d["gene_id"]=gene.gene_id
         d["gene_name"]=gene.gene_name
@@ -313,7 +306,7 @@ def find_EH_gene(gene):
         d["end"]=gene.end
         d["sample"]=sample
         d["distance_to_breakpoint"]=find_distance_breakpoint(data["breakpoints"],sample,gene)
-        d["n_SNPs"]=count_SNPs_gene_sample(data["ase_dir"],sample,data["genes"][gene.gene_id])
+        d["n_SNPs"]=data["df_n_SNPs"].loc[gene.gene_id,sample]
         d["fusion"]=find_fusion(data["breakpoints"],data["genes_index"],sample,gene,df_fusions=data["df_fusions"])
         if data["df_enhancers"] is not None:
             d["enhancers"],d["super_enhancers"],enhancer_score = find_enhancers_orientation(data["breakpoints"],data["TADs"],data["df_enhancers"],sample,gene)
@@ -321,6 +314,7 @@ def find_EH_gene(gene):
 
 
         # Score 
+        n_std,ohe_score = compute_ohe_score(data["df_TPM"],gene.gene_id,reference_samples,sample)
         OHE_score = data["weights"]["OHE"]*ohe_score
         d["OHE_score"]=OHE_score
         d["n_std"]=n_std

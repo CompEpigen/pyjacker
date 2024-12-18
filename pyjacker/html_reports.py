@@ -159,18 +159,19 @@ def generate_report(i):
     ase_plot_exists=False
     if (data["ase_dir"] is not None):
         ase_file=os.path.join(data["ase_dir"],sample+".tsv")
-        vcf_DNA= None
-        if data["ase_dna_dir"] is not None: vcf_DNA = os.path.join(data["ase_dna_dir"],sample+".vcf.gz")
+        if os.path.exists(ase_file):
+            vcf_DNA= None
+            if data["ase_dna_dir"] is not None: vcf_DNA = os.path.join(data["ase_dna_dir"],sample+".vcf.gz")
 
-        # ASE plot
-        config_ase={"general":{"reference":"custom","layout":"horizontal","genes_file":data["gtf_file"]}}
-        config_ase["output"] = {"file":os.path.join(data["outdir"],"Data/Figures/ASE/"+gene_name+"_"+sample+"."+data["image_format"]),"dpi":data["image_dpi"],"width":100.0}
-        config_ase["regions"] = [{"chr":chr,"start":gene_full.start,"end":gene_full.end}]
-        config_ase["tracks"] = [{"type":"ase","height":60,"margin_above":1.5,"file":ase_file,"vcf_DNA":vcf_DNA,"grid":False},
-                                {"type":"genes","height":12.0,"margin_above":-2,"bounding_box": False,"genes":gene_name},
-                                {"type":"chr_axis","height": 10.0}]
-        figeno_make(config_ase)
-        ase_plot_exists=True
+            # ASE plot
+            config_ase={"general":{"reference":"custom","layout":"horizontal","genes_file":data["gtf_file"]}}
+            config_ase["output"] = {"file":os.path.join(data["outdir"],"Data/Figures/ASE/"+gene_name+"_"+sample+"."+data["image_format"]),"dpi":data["image_dpi"],"width":100.0}
+            config_ase["regions"] = [{"chr":chr,"start":gene_full.start,"end":gene_full.end}]
+            config_ase["tracks"] = [{"type":"ase","height":60,"margin_above":1.5,"file":ase_file,"vcf_DNA":vcf_DNA,"grid":False},
+                                    {"type":"genes","height":12.0,"margin_above":-2,"bounding_box": False,"genes":gene_name},
+                                    {"type":"chr_axis","height": 10.0}]
+            figeno_make(config_ase)
+            ase_plot_exists=True
     with open(os.path.join(data["outdir"],"Data/html/"+gene_name+"_"+sample+".html"),"w") as outfile:
         tmp = outfile.write("<!DOCTYPE html>\n<html lang=\"en\"><head>\n<meta charset=\"UTF-8\">")
         tmp = outfile.write("<div style=\"text-align:center\">\n")
@@ -232,7 +233,7 @@ def generate_report(i):
             tmp = outfile.write("<script>$('#cnv').dataTable({searching: false, paging: false, info: false});</script>")
 
         # SNPs
-        if data["ase_dir"] is not None:
+        if data["ase_dir"] is not None and ase_plot_exists:
             tmp = outfile.write("<h2>SNPs in "+gene_name+"</h2>\n")
             tmp = outfile.write("<p style=\"margin-top:2.5em\"> </p>\n")
             tmp = outfile.write("<table id=\"snv\" class=\"display\" style=\"width:60%\">\n")
