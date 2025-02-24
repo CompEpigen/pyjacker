@@ -38,7 +38,7 @@ def compute_ase_matrix(samples,ase_dir,genes,genes_index=None,prior_coef=2.0,imp
     df_n_SNPs = pd.DataFrame(np.zeros((len(genes),len(samples)),dtype=int))
     df_n_SNPs.index = [genes[g].gene_id for g in genes]
     df_n_SNPs.columns = samples
-    if ase_dir is None: return df
+    if ase_dir is None: return df, df_n_SNPs
     for sample in tqdm(samples,file=sys.stdout):
         if CNAs is not None and sample in CNAs: CNAs_sample = CNAs[sample]
         else: CNAs_sample = {}
@@ -84,17 +84,3 @@ def llr_betabinom(k,n,alpha=10,beta=10):
 
 def compute_ase_score_from_llrs(llrs,prior_coef=2.0):
     return np.sum(llrs) / (len(llrs) + prior_coef)
-
-
-"""
-def count_SNPs_gene_sample(ase_dir,sample,gene=None):
-    if ase_dir is None: return 0
-    chr = gene.chr
-    start = gene.start
-    end = gene.end
-    df = pd.read_csv(os.path.join(ase_dir,sample+".tsv"),sep="\t",dtype={"contig":str})
-    df["contig"] = [x.lstrip("chr") for x in df["contig"]]
-    df = df.loc[df["contig"]==chr]
-    df = df.loc[(df["position"]>=start) & (df["position"]<=end)]
-    return df.shape[0]
-"""
