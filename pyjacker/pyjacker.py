@@ -116,12 +116,12 @@ class pyjacker:
                 self.CNAs = read_CNAs(df_CNAs,self.samples)
                 self.df_breakpoints = add_cna_breakpoints(self.CNAs,self.df_breakpoints,self.chr_lengths)
                 TPM_corrected_file = os.path.join(self.cache_dir,"TPM_corrected.tsv")
-                if os.path.exists(TPM_corrected_file):
-                    self.df_TPM = pd.read_csv(TPM_corrected_file,sep="\t",index_col=0)
-                else:
-                    print("Computing gene expression values corrected for copy number...")
-                    self.df_TPM = correct_exp_cn(self.df_TPM,self.CNAs,self.genes,chr_lengths=self.chr_lengths)
-                    self.df_TPM.to_csv(TPM_corrected_file,sep="\t")
+                #if os.path.exists(TPM_corrected_file):
+                #    self.df_TPM = pd.read_csv(TPM_corrected_file,sep="\t",index_col=0)
+                #else:
+                print("Computing gene expression values corrected for copy number...")
+                self.df_TPM = correct_exp_cn(self.df_TPM,self.CNAs,self.genes,chr_lengths=self.chr_lengths)
+                self.df_TPM.to_csv(TPM_corrected_file,sep="\t")
                 
             else: self.CNAs = None
             self.breakpoints = read_breakpoints(self.df_breakpoints)
@@ -146,17 +146,16 @@ class pyjacker:
                 self.ase_dna_dir = None
             cache_ase_file = os.path.join(self.cache_dir,"ase.tsv")
             cache_SNPs_file = os.path.join(self.cache_dir,"SNPs.tsv")
-            if os.path.exists(cache_ase_file) and os.path.exists(cache_SNPs_file):
-                self.df_ase = pd.read_csv((cache_ase_file),sep="\t",index_col=0)
-                self.df_n_SNPs=pd.read_csv((cache_SNPs_file),sep="\t",index_col=0)
-            else:
-                print("Computing allele-specific expression scores...")
-                imprinted_genes_file = None
-                if "imprinted_genes_file" in data_yaml:
-                    imprinted_genes_file = data_yaml["imprinted_genes_file"]
-                self.df_ase, self.df_n_SNPs = compute_ase_matrix(self.samples,self.ase_dir,self.genes,self.genes_index,imprinted_genes_file=imprinted_genes_file,CNAs=self.CNAs)
-                self.df_ase.to_csv(cache_ase_file,sep="\t")
-                self.df_n_SNPs.to_csv(cache_SNPs_file,sep="\t")
+            #if os.path.exists(cache_ase_file) and os.path.exists(cache_SNPs_file):
+            #    self.df_ase = pd.read_csv((cache_ase_file),sep="\t",index_col=0)
+            #    self.df_n_SNPs=pd.read_csv((cache_SNPs_file),sep="\t",index_col=0)
+            print("Computing allele-specific expression scores...")
+            imprinted_genes_file = None
+            if "imprinted_genes_file" in data_yaml:
+                imprinted_genes_file = data_yaml["imprinted_genes_file"]
+            self.df_ase, self.df_n_SNPs = compute_ase_matrix(self.samples,self.ase_dir,self.genes,self.genes_index,imprinted_genes_file=imprinted_genes_file,CNAs=self.CNAs)
+            self.df_ase.to_csv(cache_ase_file,sep="\t")
+            self.df_n_SNPs.to_csv(cache_SNPs_file,sep="\t")
 
             # Fusion transcripts
             if "fusions" in data_yaml:
