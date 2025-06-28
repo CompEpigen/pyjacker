@@ -26,6 +26,9 @@ def read_breakpoints(df_breakpoints):
         if "orientation1" in df_breakpoints.columns:
             orientation1 = df_breakpoints.loc[i,"orientation1"]
             orientation2 = df_breakpoints.loc[i,"orientation2"]
+        else:
+            orientation1="+"
+            orientation2="+"
 
         #if chr1==chr2 and abs(pos1-pos2)<5000: continue # Filter out small SVs ?
 

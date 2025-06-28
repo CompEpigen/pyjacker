@@ -99,11 +99,28 @@ class pyjacker:
             self.df_breakpoints = None
             if "breakpoints" in data_yaml:
                 self.df_breakpoints = pd.read_csv(data_yaml["breakpoints"],sep="\t")
+                required_cols = {'sample','chr1','chr2','pos1','pos2'}
+                if not required_cols.issubset(self.df_breakpoints.columns):
+                    raise Exception("The breakpoints file must contain at least the following columns: sample, chr1, pos1, chr2, pos2.")
+                self.df_breakpoints['sample'] = self.df_breakpoints['sample'].astype(str)
+                self.df_breakpoints['chr1'] = self.df_breakpoints['chr1'].astype(str)
+                self.df_breakpoints['chr2'] = self.df_breakpoints['chr2'].astype(str)
+                
                 # Remove breakpoints corresponding to samples for which we have no expression.
                 selected_indices=[]
+                unselected_samples= set()
                 for x in self.df_breakpoints.index:
                     if self.df_breakpoints.loc[x,"sample"] in self.samples: selected_indices.append(x)
+                    else: unselected_samples.add(self.df_breakpoints.loc[x,"sample"])
+                if len(selected_indices)==0 and self.df_breakpoints.shape[0]>0:
+                    raise Exception("In the breakpoints file, the sample column does not match any sample provided in the gene expression file.")
+                if len(unselected_samples)>0:
+                    print("Warning: some samples were listed in the breakpoints file but not present in the gene expression file: "+ ",".join(unselected_samples))
                 self.df_breakpoints = self.df_breakpoints.loc[selected_indices,:].reset_index(drop=True)
+
+                if len(self.df_breakpoints)>200000:
+                    print("Warning: you provided "+str(len(self.df_breakpoints))+" breakpoints, which is more than pyjacker is designed to handle. Pyjacker might take a while to complete. Please make sure that you only provided somatic SVs and filtered germline ones.")
+
 
             if len(self.samples)<3: sys.exit("Error: Insufficient number of samples in the RNA TPM file. Pyjacker is designed to run with at least 10 samples, and cannot be run with fewer than 3.")
             print("Running pyjacker on {} samples.".format(len(self.samples)))
@@ -116,16 +133,15 @@ class pyjacker:
                 self.CNAs = read_CNAs(df_CNAs,self.samples)
                 self.df_breakpoints = add_cna_breakpoints(self.CNAs,self.df_breakpoints,self.chr_lengths)
                 TPM_corrected_file = os.path.join(self.cache_dir,"TPM_corrected.tsv")
-                #if os.path.exists(TPM_corrected_file):
-                #    self.df_TPM = pd.read_csv(TPM_corrected_file,sep="\t",index_col=0)
-                #else:
                 print("Computing gene expression values corrected for copy number...")
                 self.df_TPM = correct_exp_cn(self.df_TPM,self.CNAs,self.genes,chr_lengths=self.chr_lengths)
                 self.df_TPM.to_csv(TPM_corrected_file,sep="\t")
                 
             else: self.CNAs = None
             self.breakpoints = read_breakpoints(self.df_breakpoints)
-
+            if len(self.breakpoints)==0:
+                raise Exception("No breakpoints were provided.")
+            
             # Filter genes: the gene must be expressed in at least one sample.
             # Also require at least 30% of samples to have expression lower than max/10. 
             # This reduces the number of tests.
@@ -146,9 +162,6 @@ class pyjacker:
                 self.ase_dna_dir = None
             cache_ase_file = os.path.join(self.cache_dir,"ase.tsv")
             cache_SNPs_file = os.path.join(self.cache_dir,"SNPs.tsv")
-            #if os.path.exists(cache_ase_file) and os.path.exists(cache_SNPs_file):
-            #    self.df_ase = pd.read_csv((cache_ase_file),sep="\t",index_col=0)
-            #    self.df_n_SNPs=pd.read_csv((cache_SNPs_file),sep="\t",index_col=0)
             print("Computing allele-specific expression scores...")
             imprinted_genes_file = None
             if "imprinted_genes_file" in data_yaml:
@@ -209,7 +222,6 @@ class pyjacker:
         df_result = pd.DataFrame(results_flattened)
         if not df_result.empty:
             df_result = df_result.sort_values("score",ascending=False)
-        #print(df_result)
         return df_result
     
     
@@ -228,6 +240,8 @@ class pyjacker:
                 return np.sum([score<x for x in null_distribution]) / len(null_distribution)
             if group_by_gene:
                 pvals = [compute_empirical_pval(score,null_distribution) for score in gene_scores]
+                if len(pvals)==0:
+                    raise Exception("No putative enhancer hijacking event was identified.")
                 qvals = multipletests(pvals,alpha=0.05,method="fdr_bh")[1]
                 gene2qval={}
                 for i in range(len(gene_ids)):
@@ -373,6 +387,9 @@ def main():
     pyjack = pyjacker(args.config_file)
     print("Searching for enhancer hijacking events...")
     df_result=pyjack.find_EH(random_candidates=False)
+    if df_result.shape[0]==0:
+        print("No putative enhancer hijacking event could be identified.")
+        sys.exit(0)
     null_distribution = pyjack.estimate_null_distribution()
     pyjack.save_results(df_result,null_distribution=null_distribution)
 
