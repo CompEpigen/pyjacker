@@ -68,13 +68,13 @@ The main html file contains a table with the ranked list of pairs (gene, sample)
 * ASE score: allele-specific expression score. A score >0 indicates that there is evidence for monoallelic expression, while a score <0 indicates that there is evidence for bi-allelic expression. A score of 0 indicates that there is no evidence (usually because there is no SNP covered).
 * Enhancer score: if a list of scored enhancers was provided as inputs, this score indicates the strength of enhancers coming close to the gene
 
-  For each row of this main table, clicking on the sample name will lead you to a detailed report for this particular event, containing:
-  * an overexpression plot: all samples are ranked by the expression of the gene, and the sample of interest is colored in green (typically the expression should be much higher for this sample than for other samples).
-  * copy-number and sv plot: a plot indicating the copy number at each position of the chromosome where the gene lies, with arcs indicating structural variants. The position of the gene within the chromosome is highlighted.
-  * allele-specific expression plot: for each SNP present within the gene, shows the fraction of reads supporting the major allele (blue) and minor allele (red). If the expression is monoallelic, we should almost only see the major allele. At the bottom, lines show the position of the SNPs within the gene.
-  * Lists of structural variants and copy numbers present in the chromosome, and allelic read counts in the gene.
- 
-  Note that these detailed reports require the "Data" directory to be in the same directory as `report.html`, so if you want to see them, you cannot just copy and paste the `report.html` file elsewhere, you also need to copy this directory.
+For each row of this main table, clicking on the sample name will lead you to a detailed report for this particular event, containing:
+* an overexpression plot: all samples are ranked by the expression of the gene, and the sample of interest is colored in green (typically the expression should be much higher for this sample than for other samples).
+* copy-number and sv plot: a plot indicating the copy number at each position of the chromosome where the gene lies, with arcs indicating structural variants. The position of the gene within the chromosome is highlighted.
+* allele-specific expression plot: for each SNP present within the gene, shows the fraction of reads supporting the major allele (blue) and minor allele (red). If the expression is monoallelic, we should almost only see the major allele. At the bottom, lines show the position of the SNPs within the gene.
+* Lists of structural variants and copy numbers present in the chromosome, and allelic read counts in the gene.
+
+Note that these detailed reports require the "Data" directory to be in the same directory as `report.html`, so if you want to see them, you cannot just copy and paste the `report.html` file elsewhere, you also need to copy this directory.
 
 ## Runtime
 Pyjacker takes approximately 5h to run on the ckAML dataset (39 samples) with default settings and 6 cores. The runtime is essentially proportional to the number of samples in the dataset and to the number of iterations used when estimating the null distribution of scores (used to compute the false discovery rate). This number of iterations is 50 by default, which ensures that accurate p-values are computed, but this can easily be reduced to 5-10 to reduce the runtime, without drastically altering the results.
