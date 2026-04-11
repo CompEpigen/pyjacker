@@ -164,6 +164,8 @@ def find_enhancers_orientation(breakpoints,TADs,df_enhancers,sample,gene):
     breakpoints_right=[]
     minpos_right=1e10
     maxpos_left=0
+    if not chr in breakpoints:
+        return "", 0
     for bp in breakpoints[chr]:
         if bp.pos1>=left_boundary and bp.pos1<=right_boundary and bp.sample==sample:
             if bp.pos1>start:
